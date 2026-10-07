@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Ruta de Arranque</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#F6F4EF;
+    --paper-raised:#FFFFFF;
+    --ink:#1B1D22;
+    --ink-dim:#6b6a61;
+    --line:#E1DCD0;
+    --accent:#2F6F5E;
+    --accent-contrast:#FFFFFF;
+    --accent-soft:#DCEEE8;
+    --warm:#C96A28;
+    --warm-soft:#F6E4D2;
+    --critical:#A8402F;
+    --critical-soft:#F3DAD3;
+    --pending:#8f887c;
+    --pending-soft:#EAE5D9;
+    --shadow: 0 1px 2px rgba(27,29,34,0.05), 0 8px 24px -12px rgba(27,29,34,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#15171B;
+      --paper-raised:#1D2024;
+      --ink:#ECE9E1;
+      --ink-dim:#A29C8E;
+      --line:#2C2F35;
+      --accent:#57B39B;
+      --accent-contrast:#0B1210;
+      --accent-soft:#1D3630;
+      --warm:#E08A47;
+      --warm-soft:#3A2A18;
+      --critical:#DB7A65;
+      --critical-soft:#3B241E;
+      --pending:#8b8578;
+      --pending-soft:#26282C;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#15171B;
+    --paper-raised:#1D2024;
+    --ink:#ECE9E1;
+    --ink-dim:#A29C8E;
+    --line:#2C2F35;
+    --accent:#57B39B;
+    --accent-contrast:#0B1210;
+    --accent-soft:#1D3630;
+    --warm:#E08A47;
+    --warm-soft:#3A2A18;
+    --critical:#DB7A65;
+    --critical-soft:#3B241E;
+    --pending:#8b8578;
+    --pending-soft:#26282C;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif;
+    padding-inline: clamp(16px, 4vw, 40px);
+    padding-block: 28px 64px;
+  }
+  .num{font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;}
+
+  /* ---------- top ---------- */
+  .topbar{
+    display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+    flex-wrap:wrap;
+    max-width:1180px; margin:0 auto 6px;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px;}
+  .brand .mark{
+    font-family:"Fraunces", serif; font-weight:600; font-size:1.5rem; letter-spacing:-0.01em;
+  }
+  .brand .sub{
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.09em; color:var(--ink-dim);
+  }
+  .mockbadge{
+    font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--warm); border:1px solid var(--warm); border-radius:999px;
+    padding:3px 10px; white-space:nowrap;
+  }
+
+  .subhead{
+    max-width:1180px; margin:2px auto 22px; color:var(--ink-dim); font-size:0.92rem; max-width:65ch;
+  }
+
+  .tabs{
+    max-width:1180px; margin:0 auto 22px; display:flex; gap:4px;
+    border-bottom:1px solid var(--line);
+  }
+  .tab{
+    font-family:"IBM Plex Sans"; font-size:0.86rem; font-weight:500; color:var(--ink-dim);
+    background:none; border:none; padding:10px 4px; margin-right:22px; cursor:pointer;
+    border-bottom:2px solid transparent; position:relative; top:1px;
+  }
+  .tab[aria-selected="true"]{ color:var(--ink); border-bottom-color:var(--accent); }
+  .tab .n{ font-family:"IBM Plex Mono"; font-size:0.72rem; color:var(--ink-dim); margin-left:6px; }
+
+  .view{ max-width:1180px; margin:0 auto; }
+  .view[hidden]{ display:none !important; }
+
+  .board{
+    display:grid; grid-template-columns: minmax(280px, 360px) 1fr; gap:20px;
+    align-items:start;
+  }
+  @media (max-width:820px){ .board{ grid-template-columns: 1fr; } }
+
+  .panel-title{
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-dim);
+    margin:0 0 10px 2px;
+  }
+
+  /* ---------- client list ---------- */
+  .list{ display:flex; flex-direction:column; gap:10px; }
+
+  .card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:10px;
+    padding:13px 14px; cursor:pointer; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; gap:7px; text-align:left; width:100%;
+    font-family:inherit; color:inherit;
+  }
+  .card:focus-visible, .tab:focus-visible, button:focus-visible, input:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px;
+  }
+  .card[aria-current="true"]{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), var(--shadow); }
+  .card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .card-name{ font-weight:600; font-size:0.95rem; }
+  .card-meta{ font-size:0.78rem; color:var(--ink-dim); display:flex; flex-wrap:wrap; gap:6px 10px; }
+  .bar{ height:5px; border-radius:3px; background:var(--pending-soft); overflow:hidden; }
+  .bar > i{ display:block; height:100%; background:var(--accent); }
+
+  .chip{
+    display:inline-flex; align-items:center; gap:5px; font-size:0.72rem; font-weight:500;
+    padding:3px 9px; border-radius:999px; white-space:nowrap; line-height:1.3;
+  }
+  .chip.ok{ background:var(--accent-soft); color:var(--accent); }
+  .chip.warm{ background:var(--warm-soft); color:var(--warm); }
+  .chip.critical{ background:var(--critical-soft); color:var(--critical); }
+  .chip.pending{ background:var(--pending-soft); color:var(--ink-dim); }
+
+  /* ---------- detail ---------- */
+  .detail{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:14px;
+    padding:24px clamp(18px,3vw,30px); box-shadow:var(--shadow);
+  }
+  .d-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:4px;}
+  .d-name{ font-family:"Fraunces"; font-weight:600; font-size:1.5rem; letter-spacing:-0.01em; }
+  .d-sub{ color:var(--ink-dim); font-size:0.86rem; margin-top:2px; }
+  .d-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  .section{ margin-top:26px; padding-top:22px; border-top:1px solid var(--line); }
+  .section:first-of-type{ margin-top:22px; }
+  .section h3{
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-dim);
+    margin:0 0 14px;
+  }
+
+  /* timeline */
+  .timeline{ display:flex; flex-direction:column; gap:8px; }
+  .timeline .track{ position:relative; height:6px; border-radius:3px; background:var(--pending-soft); }
+  .timeline .track > i{ position:absolute; inset:0; border-radius:3px; background:var(--accent); }
+  .timeline .track > .today{
+    position:absolute; top:-4px; width:2px; height:14px; background:var(--ink); opacity:0.55;
+  }
+  .timeline .labels{ display:flex; justify-content:space-between; font-size:0.74rem; color:var(--ink-dim); }
+  .timeline .labels b{ color:var(--ink); font-weight:600; }
+  .gift-note{
+    margin-top:10px; font-size:0.82rem; padding:9px 12px; border-radius:8px;
+    background:var(--accent-soft); color:var(--accent);
+  }
+  .gift-note.off{ background:var(--pending-soft); color:var(--ink-dim); }
+
+  .notebox{
+    margin-top:10px; font-size:0.82rem; padding:9px 12px; border-radius:8px; line-height:1.45;
+  }
+  .notebox.ok{ background:var(--accent-soft); color:var(--accent); }
+  .notebox.warm{ background:var(--warm-soft); color:var(--warm); }
+  .notebox.critical{ background:var(--critical-soft); color:var(--critical); }
+  .notebox b{ font-weight:600; }
+  .notebox .num{ font-weight:500; }
+
+  .date-line{ font-size:0.82rem; color:var(--ink-dim); margin:2px 0 0; }
+  .date-line b{ color:var(--ink); font-weight:500; }
+
+  button.ghost{
+    font-family:"IBM Plex Sans"; font-weight:500; font-size:0.84rem;
+    background:none; color:var(--accent); border:1px solid var(--accent);
+    border-radius:8px; padding:9px 16px; cursor:pointer;
+  }
+  button.ghost:hover{ background:var(--accent-soft); }
+
+  .empty-step{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    padding:14px 16px; border:1px dashed var(--line); border-radius:10px;
+  }
+  .empty-step p{ margin:0; font-size:0.86rem; color:var(--ink-dim); max-width:38ch; }
+
+  /* checklist */
+  .checklist{ display:flex; flex-direction:column; gap:2px; }
+  .check-row{
+    display:flex; align-items:center; gap:11px; padding:10px 4px;
+    border-bottom:1px dashed var(--line);
+  }
+  .check-row:last-child{ border-bottom:none; }
+  .check-row input[type="checkbox"]{
+    width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; margin:0;
+  }
+  .check-label{ font-size:0.9rem; flex:1; }
+  .check-hint{ font-size:0.76rem; color:var(--ink-dim); }
+
+  select.mini{
+    font-family:inherit; font-size:0.78rem; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:6px; padding:5px 8px;
+  }
+
+  .history{ display:flex; flex-direction:column; gap:12px; }
+  .history li{ list-style:none; font-size:0.86rem; }
+  .history time{ display:block; font-family:"IBM Plex Mono"; font-size:0.72rem; color:var(--ink-dim); margin-bottom:2px;}
+  .history ul{ margin:0; padding:0; display:flex; flex-direction:column; gap:12px; }
+
+  .note-form{
+    margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);
+    display:flex; gap:8px; align-items:flex-end;
+  }
+  .note-form textarea{
+    flex:1; font-family:inherit; font-size:0.86rem; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:8px; padding:9px 11px; resize:vertical;
+    min-height:40px; max-height:120px;
+  }
+  .note-form textarea:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .note-hint{ font-size:0.74rem; color:var(--ink-dim); margin:6px 0 0; }
+
+  /* ---------- pago 2 breakdown ---------- */
+  .price-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 2px; border-bottom:1px dashed var(--line);
+  }
+  .price-row:last-of-type{ border-bottom:none; }
+  .price-row .lbl{ font-size:0.88rem; flex:1; }
+  .price-row .lbl small{ display:block; font-size:0.74rem; color:var(--ink-dim); margin-top:1px; }
+  .price-row .amt{ font-family:"IBM Plex Mono"; font-size:0.88rem; font-variant-numeric: tabular-nums; min-width:64px; text-align:right; }
+  .price-row .amt.zero{ color:var(--ink-dim); }
+
+  .switch{ position:relative; display:inline-block; width:38px; height:22px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .switch .track{
+    position:absolute; inset:0; background:var(--pending-soft); border:1px solid var(--line);
+    border-radius:999px; cursor:pointer; transition:background .15s;
+  }
+  .switch .track::before{
+    content:""; position:absolute; width:16px; height:16px; left:2px; top:2px;
+    background:var(--paper-raised); border-radius:50%; transition:transform .15s;
+    box-shadow:0 1px 2px rgba(0,0,0,0.25);
+  }
+  .switch input:checked + .track{ background:var(--accent); border-color:var(--accent); }
+  .switch input:checked + .track::before{ transform:translateX(16px); }
+  .switch input:focus-visible + .track{ outline:2px solid var(--accent); outline-offset:2px; }
+  .switch input:disabled + .track{ opacity:0.4; cursor:not-allowed; }
+
+  .price-total{
+    display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; padding-top:12px;
+    border-top:1px solid var(--line);
+  }
+  .price-total .lbl{ font-weight:600; font-size:0.92rem; }
+  .price-total .amt{ font-family:"Fraunces"; font-weight:600; font-size:1.3rem; }
+
+  .stripe-card{
+    border:1px solid var(--accent); background:var(--accent-soft); border-radius:12px;
+    padding:18px 20px; margin-top:16px;
+  }
+  .stripe-card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  }
+  .stripe-card h4{ margin:0; font-weight:600; font-size:0.95rem; color:var(--ink); }
+  .stripe-card .contact{ font-size:0.86rem; color:var(--ink-dim); margin-bottom:6px; }
+  .stripe-card .amount-line{ font-size:0.9rem; margin-bottom:3px; }
+  .stripe-card .amount-line b{ font-family:"IBM Plex Mono"; font-variant-numeric: tabular-nums; }
+  .stripe-card .method-line{ font-size:0.82rem; color:var(--ink-dim); margin-bottom:14px; }
+  .stripe-card .action-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--paper-raised); border-radius:9px; padding:11px 14px;
+  }
+  .stripe-card .status{ font-size:0.82rem; color:var(--ink-dim); margin-top:4px; }
+  button.stripe-cta{
+    background:var(--accent); color:var(--accent-contrast); border:none;
+    border-radius:8px; padding:10px 18px; font-weight:600; font-size:0.86rem;
+    cursor:pointer; white-space:nowrap; font-family:"IBM Plex Sans";
+  }
+  button.stripe-cta:disabled{ background:var(--pending-soft); color:var(--ink-dim); cursor:not-allowed; }
+  .stripe-hint{
+    font-size:0.78rem; color:var(--warm); background:var(--warm-soft);
+    border-radius:8px; padding:10px 12px; margin-top:12px; line-height:1.5;
+  }
+  .stripe-connector{ width:2px; height:16px; background:var(--accent); margin-left:20px; }
+  .stripe-connector + .stripe-card{ margin-top:0; }
+  .stripe-card.confirmed{ border-color:var(--accent); }
+  .stripe-card .action-row.confirmed{ justify-content:flex-start; }
+  .stripe-card .confirmed-line{ font-size:0.9rem; color:var(--accent); font-weight:500; }
+
+  .adjust-input{
+    width:80px; font-family:"IBM Plex Mono"; font-size:0.86rem; text-align:right;
+    border:1px solid var(--line); border-radius:6px; padding:5px 8px; background:var(--paper); color:var(--ink);
+  }
+
+  /* activation footer */
+  .gate{
+    margin-top:26px; padding-top:22px; border-top:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .gate-info{ font-size:0.86rem; color:var(--ink-dim); max-width:44ch; }
+  .gate-info b{ color:var(--ink); }
+  button.primary{
+    font-family:"IBM Plex Sans"; font-weight:600; font-size:0.88rem;
+    background:var(--accent); color:var(--accent-contrast); border:none;
+    border-radius:8px; padding:11px 20px; cursor:pointer;
+  }
+  button.primary:disabled{
+    background:var(--pending-soft); color:var(--ink-dim); cursor:not-allowed;
+  }
+  button.primary:not(:disabled):hover{ filter:brightness(1.06); }
+
+  .foot-note{
+    max-width:1180px; margin:34px auto 0; font-size:0.78rem; color:var(--ink-dim);
+    border-top:1px solid var(--line); padding-top:16px;
+  }
+
+  /* ---------- aviso de Slack ---------- */
+  .slack-box{
+    margin-top:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.78rem;
+    white-space:pre-line; line-height:1.55; padding:12px 14px; border-radius:8px;
+    background:var(--accent-soft); color:var(--ink); border:1px solid var(--accent);
+  }
+  .slack-box-head{
+    font-family:"IBM Plex Sans"; font-weight:600; font-size:0.82rem; color:var(--accent);
+    margin-bottom:6px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">Ruta de Arranque</span>
+      <span class="sub">Nemetea · Onboarding → Montaje</span>
+    </div>
+    <span class="mockbadge">Diseño · datos de ejemplo</span>
+  </div>
+  <p class="subhead">Del pago inicial confirmado hasta el clic de "Activar Campaña". Cada cliente vive en un único registro — cambia de pestaña solo cuando cambia su fase, sin copiarlo a mano de un sitio a otro.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="onboarding" id="tabbtn-onboarding">Onboarding <span class="n">Micaela</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="montaje" id="tabbtn-montaje">Montaje de campaña <span class="n">Micaela</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="cobro" id="tabbtn-cobro">Cobro y activación <span class="n">Micaela</span></button>
+  </div>
+
+  <!-- ============ ONBOARDING ============ -->
+  <section class="view" id="view-onboarding">
+    <div class="board">
+      <div>
+        <p class="panel-title">Clientes en Fase 1</p>
+        <div class="list" id="ob-list"></div>
+      </div>
+      <div class="detail" id="ob-detail"></div>
+    </div>
+  </section>
+
+  <!-- ============ MONTAJE ============ -->
+  <section class="view" id="view-montaje" hidden>
+    <p class="subhead" style="margin-top:-6px;">El equipo de montaje (edición, planillas, SAP, landing, ads) no abre este panel — recibe el aviso por Slack y trabaja en sus propias herramientas. Solo aparecen aquí los clientes que están en ese proceso ahora mismo. Cuando el equipo avisa por Slack que la campaña está lista, Micaela lo marca aquí y el cliente pasa a «Cobro y activación».</p>
+    <div class="board">
+      <div>
+        <p class="panel-title">Clientes en montaje</p>
+        <div class="list" id="mt-list"></div>
+      </div>
+      <div class="detail" id="mt-detail"></div>
+    </div>
+  </section>
+
+  <!-- ============ COBRO Y ACTIVACIÓN ============ -->
+  <section class="view" id="view-cobro" hidden>
+    <p class="subhead" style="margin-top:-6px;">El equipo ya avisó que la campaña está lista. Aquí se envía el Pago 2, se confirma el cobro y se activa la campaña — ya no depende de nadie de montaje.</p>
+    <div class="board">
+      <div>
+        <p class="panel-title">Clientes listos para cobro</p>
+        <div class="list" id="cb-list"></div>
+      </div>
+      <div class="detail" id="cb-detail"></div>
+    </div>
+  </section>
+
+  <p class="foot-note">Simulador de diseño — sin conexión a Airtable todavía. Cada campo de aquí ya está identificado en la tabla de mapeo (Clientes / Campañas / Assets / Actividades) que se revisó antes de maquetar esto.</p>
+
+<script>
+// ---------------------------------------------------------------
+// Datos de ejemplo (no son clientes reales de Nemetea)
+// ---------------------------------------------------------------
+const today = 0; // día de referencia relativo
+
+// Un único registro de cliente (fase: "Onboarding" | "Montaje") — el mismo
+// objeto lleva los datos de las dos pantallas, tal como sería en Airtable:
+// nada se copia de un sitio a otro, solo cambia el campo "fase".
+const clientes = [
+  {
+    id: "ohana",
+    empresa: "Ohana Pilates",
+    contacto: "Sara Muñiz",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SLU",
+    fase: "Onboarding",
+    pago1Day: 0,
+    carpetaEnviadaDay: null,
+    checklist: [
+      { label: "Formulario Primeros Pasos", done: false },
+      { label: "Fotos del local / producto", done: false },
+      { label: "Vídeos sin editar", done: false },
+    ],
+    historial: [
+      { when: "hoy", note: "Pago 1 confirmado. Pendiente de enviar la carpeta de Drive para arrancar el plazo." },
+    ],
+  },
+  {
+    id: "vergel",
+    empresa: "Vergel Urbano",
+    contacto: "Nayara Ibáñez",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SLU",
+    fase: "Onboarding",
+    pago1Day: -5,
+    carpetaEnviadaDay: -4,
+    checklist: [
+      { label: "Formulario Primeros Pasos", done: true },
+      { label: "Fotos del local / producto", done: false },
+      { label: "Vídeos sin editar", done: false },
+    ],
+    historial: [
+      { when: "hace 4 días", note: "Carpeta de Drive enviada. Recordatorio automático día 1 enviado por WhatsApp." },
+      { when: "hace 1 día", note: "Nayara pregunta cuántas fotos como mínimo — se le pasó el vídeo instructivo." },
+    ],
+  },
+  {
+    id: "kanna",
+    empresa: "Kanna CBD Sur",
+    contacto: "Rubén Casals",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SLU",
+    fase: "Onboarding",
+    pago1Day: -19,
+    carpetaEnviadaDay: -19,
+    checklist: [
+      { label: "Formulario Primeros Pasos", done: false },
+      { label: "Fotos del local / producto", done: false },
+      { label: "Vídeos sin editar", done: false },
+    ],
+    historial: [
+      { when: "hace 19 días", note: "Carpeta enviada tras confirmar Pago 1." },
+      { when: "hace 6 días", note: "Sin respuesta a dos mensajes de seguimiento — se marca para llamada." },
+    ],
+  },
+  {
+    id: "alba",
+    empresa: "Estética Alba Luz",
+    contacto: "Alba Ferreiro",
+    entrada: "Formación",
+    cc: false,
+    entidad: "SLU",
+    fase: "Onboarding",
+    pago1Day: -12,
+    carpetaEnviadaDay: -11,
+    checklist: [
+      { label: "Formulario Primeros Pasos", done: true },
+      { label: "Fotos del local / producto", done: true },
+      { label: "Vídeos sin editar", done: false },
+    ],
+    historial: [
+      { when: "hace 9 días", note: "Fotos recibidas en Drive, buena calidad." },
+    ],
+  },
+  {
+    id: "vitalia",
+    empresa: "Clínica Vitalia",
+    contacto: "Marcos Peña",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "LLC",
+    fase: "Onboarding",
+    pago1Day: -30,
+    carpetaEnviadaDay: -29,
+    prorroga: true,
+    checklist: [
+      { label: "Formulario Primeros Pasos", done: true },
+      { label: "Fotos del local / producto", done: true },
+      { label: "Vídeos sin editar", done: false },
+    ],
+    historial: [
+      { when: "hace 8 días", note: "Plazo de 21 días naturales vencido sin material completo." },
+      { when: "hace 7 días", note: "Marcos solicita prórroga voluntaria — penalización de 100 $ aplicada (entidad LLC)." },
+    ],
+  },
+
+  // ---- ya pasaron por Onboarding: llegan a Montaje con su historial de plazo a cuestas ----
+  {
+    id: "levelup",
+    empresa: "Growshop Level Up",
+    contacto: "Diego Ferrán",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SLU",
+    fase: "Cobro",   // equipo ya avisó "campaña lista" — Pago 2 ya cobrado y activación pendiente
+    pago1Day: -22,
+    carpetaEnviadaDay: -20,
+    materialCompletoDay: -14,   // entregó al día 6 desde la carpeta
+    prorroga: false,
+    pago2: "Cobrado",
+    canal: "Email",
+    metodoCicloNatural: "SEPA",
+    pago2Toggles: { cc: true, regaloCC: true, montaje: false, penalizacion: false, ajuste: 0 },
+    contenidoEnviado: true,
+    slaDiasHabiles: 8,
+    slaTotal: 10,
+    slackLanzamientoEnviado: {
+      when: "hace 2 días",
+      mensaje: `#montaje-campañas — Pago 2 confirmado, a lanzar
+Cliente: Growshop Level Up
+Pago 2 cobrado: 298.50 €
+→ Podéis activar la campaña cuando esté lista.`,
+    },
+    historial: [
+      { when: "hace 20 días", note: "Carpeta de Drive enviada." },
+      { when: "hace 14 días", note: "Material completo confirmado por Gisela — dentro de la 1ª semana, califica regalo de 20 días de Contact Center." },
+      { when: "hace 14 días", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." },
+      { when: "hace 3 días", note: "Equipo avisa por Slack que la campaña está lista — Micaela lo marca en el CRM." },
+      { when: "hace 2 días", note: "Webhook de Stripe confirma el cobro del Pago 2 (298.50 €)." },
+    ],
+  },
+  {
+    id: "zen",
+    empresa: "Espacio Zen Wellness",
+    contacto: "Paula Roig",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SLU",
+    fase: "Cobro",   // equipo ya avisó "campaña lista" — Pago 2 enviado, esperando que el cliente pague
+    pago1Day: -19,
+    carpetaEnviadaDay: -18,
+    materialCompletoDay: -8,   // entregó al día 10 — dentro de plazo, fuera de la ventana de 7 días
+    prorroga: false,
+    pago2: "Enviado",
+    canal: "Email",
+    metodoCicloNatural: "Tarjeta",
+    pago2Toggles: { cc: true, regaloCC: false, montaje: true, penalizacion: false, ajuste: 0 },
+    contenidoEnviado: true,
+    slaDiasHabiles: 6,
+    slaTotal: 10,
+    historial: [
+      { when: "hace 18 días", note: "Carpeta de Drive enviada." },
+      { when: "hace 8 días", note: "Material completo confirmado — fuera de la ventana de 7 días, sin regalo de Contact Center." },
+      { when: "hace 8 días", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." },
+      { when: "hace 1 día", note: "Equipo avisa por Slack que la campaña está lista — Micaela lo marca en el CRM." },
+      { when: "hace 1 día", note: "Enlace de Stripe del Pago 2 (298.50 €) enviado por Email." },
+    ],
+  },
+  {
+    id: "norte",
+    empresa: "Barbería Norte & Cía",
+    contacto: "Yasmina Roldán",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SLU",
+    fase: "Montaje",   // todavía trabajando — el equipo aún no ha avisado que la campaña está lista
+    pago1Day: -36,
+    carpetaEnviadaDay: -35,
+    materialCompletoDay: -25,   // entregó al día 10 de la prórroga → penalización aplicada
+    prorroga: true,
+    pago2: "No enviado",
+    canal: "WhatsApp",
+    metodoCicloNatural: "SEPA",
+    pago2Toggles: { cc: true, regaloCC: false, montaje: false, penalizacion: true, ajuste: 0 },
+    contenidoEnviado: false,
+    slaDiasHabiles: 9,
+    slaTotal: 10,
+    slackMontajeEnviado: {
+      when: "hace 9 días",
+      mensaje: `#montaje-campañas — Material completo, listo para arrancar
+Cliente: Barbería Norte & Cía
+Contacto: Yasmina Roldán
+Tipo de entrada: Estándar · Contact Center
+Regalo de 20 días de Contact Center: no (fuera de ventana)
+Entidad: SLU
+Plazo de montaje: 10 días hábiles desde hoy
+Carpeta de material: [enlace a Drive]
+→ Ficha completa en Airtable: [enlace a la ficha]`,
+    },
+    historial: [
+      { when: "hace 35 días", note: "Carpeta de Drive enviada." },
+      { when: "hace 26 días", note: "Plazo de 21 días naturales vencido — solicita prórroga, penalización de 75 € aplicada." },
+      { when: "hace 25 días", note: "Material completo confirmado dentro de la prórroga." },
+      { when: "hace 9 días", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------
+document.querySelectorAll(".tab").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b===btn));
+    document.getElementById("view-onboarding").hidden = btn.dataset.tab !== "onboarding";
+    document.getElementById("view-montaje").hidden = btn.dataset.tab !== "montaje";
+    document.getElementById("view-cobro").hidden = btn.dataset.tab !== "cobro";
+  });
+});
+
+// ---------------------------------------------------------------
+// Onboarding panel
+// ---------------------------------------------------------------
+const PLAZO_BASE = 21;       // días naturales — plazo formal del contrato
+const PLAZO_PRORROGA = 42;   // 21 + 21 si pide prórroga voluntaria
+const PENALIZACION = { SLU: "75 €", LLC: "100 $" };
+
+function fmtFecha(offsetDays){
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
+
+function diasRestantes(c){
+  if (c.carpetaEnviadaDay === null) return null;
+  const limite = c.prorroga ? PLAZO_PRORROGA : PLAZO_BASE;
+  return (c.carpetaEnviadaDay + limite) - today;
+}
+function estadoPlazo(c){
+  if (c.carpetaEnviadaDay === null) return { text: "Carpeta sin enviar", cls: "warm" };
+  if (c.materialCompletoDay !== undefined) return { text: "Material entregado", cls: "ok" };
+  const restan = diasRestantes(c);
+  if (restan < 0) return { text: "Plazo vencido", cls: "critical" };
+  if (c.prorroga) return { text: `Prórroga · vence en ${restan} d`, cls: "warm" };
+  if (restan <= 3) return { text: `Vence en ${restan} d`, cls: "critical" };
+  if (restan <= 7) return { text: `Vence en ${restan} d`, cls: "warm" };
+  return { text: `Vence en ${restan} d`, cls: "ok" };
+}
+// días entre el envío de la carpeta y la entrega — si aún no entregó, se mide contra hoy
+function diasHastaEntrega(c){
+  const fin = c.materialCompletoDay !== undefined ? c.materialCompletoDay : today;
+  return fin - c.carpetaEnviadaDay;
+}
+// Regalo de 20 días de Contact Center: entrega dentro de la 1ª semana desde la carpeta.
+// null = aún no se puede saber (no ha enviado la carpeta).
+function calificaRegaloCC(c){
+  if (c.carpetaEnviadaDay === null || c.carpetaEnviadaDay === undefined) return null;
+  return diasHastaEntrega(c) <= 7;
+}
+function regaloChip(c){
+  const r = calificaRegaloCC(c);
+  if (r === null) return { text: "Regalo CC · pendiente", cls: "pending" };
+  return r ? { text: "Regalo CC · 20 días gratis", cls: "ok" } : { text: "Regalo CC · no aplica", cls: "pending" };
+}
+// Penalización por superar los 21 días naturales: 75€ (SLU) / 100$ (LLC).
+function penalizacionInfo(c){
+  if (c.carpetaEnviadaDay === null || c.carpetaEnviadaDay === undefined) return null;
+  if (diasHastaEntrega(c) <= PLAZO_BASE) return null;
+  return { entidad: c.entidad, monto: PENALIZACION[c.entidad] || "75 €" };
+}
+function penalizacionChip(c){
+  const p = penalizacionInfo(c);
+  if (!p) return { text: "Sin penalización", cls: "ok" };
+  return { text: `Penalización ${p.monto} · ${p.entidad}`, cls: "critical" };
+}
+
+let obSelected = clientes.find(c=>c.fase==="Onboarding").id;
+
+function renderObList(){
+  const list = document.getElementById("ob-list");
+  list.innerHTML = "";
+  const enOnboarding = clientes.filter(c=>c.fase==="Onboarding");
+  if (!enOnboarding.some(c=>c.id===obSelected)) obSelected = enOnboarding[0]?.id;
+  enOnboarding.forEach(c=>{
+    const estado = estadoPlazo(c);
+    const regalo = regaloChip(c);
+    const penal = penalizacionChip(c);
+    const done = c.checklist.filter(i=>i.done).length;
+    const pct = Math.round(done / c.checklist.length * 100);
+    const carpetaTxt = c.carpetaEnviadaDay === null
+      ? "Carpeta: pendiente de enviar"
+      : `Carpeta enviada · ${fmtFecha(c.carpetaEnviadaDay)}`;
+    const card = document.createElement("button");
+    card.className = "card";
+    card.setAttribute("aria-current", c.id === obSelected);
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${c.empresa}</span>
+        <span class="chip ${estado.cls}">${estado.text}</span>
+      </div>
+      <div class="card-meta">
+        <span>${c.entrada}</span>
+        <span>${c.cc ? "Contact Center" : "Sin Contact Center"}</span>
+      </div>
+      <div class="card-meta"><span class="num">${carpetaTxt}</span></div>
+      <div class="card-meta">
+        <span class="chip ${regalo.cls}">${regalo.text}</span>
+        ${penal.text !== "Sin penalización" ? `<span class="chip ${penal.cls}">${penal.text}</span>` : ""}
+      </div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+    `;
+    card.addEventListener("click", ()=>{ obSelected = c.id; renderObList(); renderObDetail(); });
+    list.appendChild(card);
+  });
+  if (!enOnboarding.length){
+    list.innerHTML = `<p class="empty-step"><span>No quedan clientes en Onboarding — todos pasaron a Montaje.</span></p>`;
+  }
+}
+
+function renderObDetail(){
+  const c = clientes.find(x=>x.id===obSelected);
+  if (!c){ document.getElementById("ob-detail").innerHTML = ""; return; }
+  const estado = estadoPlazo(c);
+  const detail = document.getElementById("ob-detail");
+
+  // ---- bloque de plazo: sin carpeta enviada todavía ----
+  let plazoBlock;
+  if (c.carpetaEnviadaDay === null){
+    plazoBlock = `
+      <div class="date-line">Pago 1 confirmado el <b>${fmtFecha(c.pago1Day)}</b>. El plazo de 21 días naturales arranca en el momento en que se envía la carpeta de Drive — todavía no corre.</div>
+      <div class="empty-step" style="margin-top:12px;">
+        <p>Micaela confirma que la carpeta de Drive ya se ha compartido con el cliente.</p>
+        <button class="ghost" id="ob-send-carpeta">Marcar carpeta enviada hoy</button>
+      </div>
+    `;
+  } else {
+    const restan = diasRestantes(c);
+    const limite = c.prorroga ? PLAZO_PRORROGA : PLAZO_BASE;
+    const transcurrido = today - c.carpetaEnviadaDay;
+    const pctTrack = Math.min(100, Math.max(0, Math.round(transcurrido / limite * 100)));
+    const regalo = calificaRegaloCC(c);
+    const penal = PENALIZACION[c.entidad] || "75 €";
+
+    let penalBlock = "";
+    if (restan < 0 && !c.prorroga){
+      penalBlock = `<div class="notebox critical"><b>Plazo de 21 días naturales superado.</b> Corresponde penalización de <b>${penal}</b> (${c.entidad}) si el cliente pide prórroga voluntaria de otros 21 días.</div>`;
+    } else if (c.prorroga){
+      penalBlock = `<div class="notebox warm">En <b>prórroga voluntaria</b> — penalización de <b>${penal}</b> (${c.entidad}) ya aplicada. Si tampoco entrega en este segundo plazo, pierde los 250 € del montaje.</div>`;
+    }
+
+    plazoBlock = `
+      <div class="date-line">Carpeta enviada el <b>${fmtFecha(c.carpetaEnviadaDay)}</b> · plazo formal del contrato: <b class="num">21 días naturales</b>, exclusivamente vía Drive.</div>
+      <div class="timeline" style="margin-top:10px;">
+        <div class="track"><i style="width:${pctTrack}%"></i></div>
+        <div class="labels">
+          <span>Enviada <b class="num">${fmtFecha(c.carpetaEnviadaDay)}</b></span>
+          <span>Hoy <b class="num">${fmtFecha(today)}</b></span>
+          <span>Límite <b class="num">${fmtFecha(c.carpetaEnviadaDay + limite)}</b></span>
+        </div>
+      </div>
+      <div class="gift-note ${regalo ? '' : 'off'}">
+        ${regalo
+          ? "Dentro de la 1ª semana desde el envío de la carpeta — califica para el regalo de 20 días de Contact Center."
+          : "Fuera de la ventana de 7 días desde el envío de la carpeta — ya no aplica el regalo de 20 días de Contact Center."}
+      </div>
+      ${penalBlock}
+    `;
+  }
+
+  const regaloHead = regaloChip(c);
+  const penalHead = penalizacionChip(c);
+  detail.innerHTML = `
+    <div class="d-head">
+      <div>
+        <div class="d-name">${c.empresa}</div>
+        <div class="d-sub">${c.contacto} · Tipo de entrada: ${c.entrada} · Entidad: ${c.entidad}</div>
+      </div>
+      <div class="d-chips">
+        <span class="chip ${estado.cls}">${estado.text}</span>
+        ${c.cc ? '<span class="chip ok">Contact Center</span>' : ''}
+      </div>
+    </div>
+    <div class="d-chips" style="margin-top:8px;">
+      <span class="chip ${regaloHead.cls}">${regaloHead.text}</span>
+      <span class="chip ${penalHead.cls}">${penalHead.text}</span>
+    </div>
+
+    <div class="section">
+      <h3>Plazo de documentación${c.prorroga ? " — en prórroga" : ""}</h3>
+      ${plazoBlock}
+    </div>
+
+    <div class="section">
+      <h3>Material recibido</h3>
+      <div class="checklist">
+        ${c.checklist.map((item, i)=>`
+          <label class="check-row">
+            <input type="checkbox" data-i="${i}" ${item.done ? "checked" : ""}>
+            <span class="check-label">${item.label}</span>
+            <span class="check-hint">${item.done ? "Recibido" : "Pendiente"}</span>
+          </label>
+        `).join("")}
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Historial de comunicación</h3>
+      <ul class="history">
+        ${c.historial.map(h=>`<li><time>${h.when}</time>${h.note}</li>`).join("")}
+      </ul>
+      <div class="note-form">
+        <textarea id="ob-note-input" placeholder="Escribe aquí lo que has hablado o hecho con el cliente..." rows="1"></textarea>
+        <button class="ghost" id="ob-note-save">Guardar nota</button>
+      </div>
+      <p class="note-hint">Esto es la caja de comentarios nativa de la ficha en Airtable — no un campo de texto aparte. Cualquiera del equipo la ve sin tener que preguntar.</p>
+    </div>
+
+    <div class="gate">
+      <div class="gate-info">Cuando Gisela/Micaela confirman que <b>fotos, vídeos y formulario</b> están completos, el cliente pasa a <b>Material Completo</b> — se avisa por Slack al equipo de montaje y arranca el compromiso simétrico de Nemetea: <b>10 días hábiles</b> para tener la campaña montada.</div>
+      <button class="primary" id="ob-advance" ${c.carpetaEnviadaDay === null ? "disabled" : ""}>Marcar Material Completo</button>
+    </div>
+  `;
+
+  detail.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+    cb.addEventListener("change", (e)=>{
+      c.checklist[+e.target.dataset.i].done = e.target.checked;
+      renderObList();
+      renderObDetail();
+    });
+  });
+  const noteBtn = detail.querySelector("#ob-note-save");
+  const noteInput = detail.querySelector("#ob-note-input");
+  if (noteBtn){
+    noteBtn.addEventListener("click", ()=>{
+      const texto = noteInput.value.trim();
+      if (!texto) return;
+      c.historial.push({ when: "hoy", note: texto });
+      renderObDetail();
+    });
+  }
+  const sendBtn = detail.querySelector("#ob-send-carpeta");
+  if (sendBtn){
+    sendBtn.addEventListener("click", ()=>{
+      c.carpetaEnviadaDay = today;
+      c.historial.push({ when: "hoy", note: `Carpeta de Drive marcada como enviada por Micaela (${fmtFecha(today)}). Arranca el plazo de 21 días naturales.` });
+      renderObList();
+      renderObDetail();
+    });
+  }
+  const advBtn = detail.querySelector("#ob-advance");
+  if (advBtn && !advBtn.disabled){
+    advBtn.addEventListener("click", ()=>{
+      c.materialCompletoDay = today;
+      c.fase = "Montaje";
+      c.canal = c.canal || "Email";
+      c.contenidoEnviado = c.contenidoEnviado || false;
+      c.slaDiasHabiles = 0;
+      c.slaTotal = 10;
+      const califica = regaloChip(c).text === "Regalo CC · 20 días gratis";
+      c.historial.push({ when: "hoy", note: `Material completo confirmado por Micaela (${fmtFecha(today)}). ${califica ? "Califica regalo de 20 días de Contact Center." : "Fuera de ventana — sin regalo de Contact Center."}` });
+
+      // ---- aviso a Montaje de campaña por Slack ----
+      // Dispara en cuanto se marca Material Completo — es el único punto de entrada del
+      // equipo de montaje: no tienen panel, solo reciben esto y trabajan en sus herramientas.
+      const mensaje = buildSlackMontajeMessage(c, califica);
+      c.slackMontajeEnviado = { when: fmtFecha(today), mensaje };
+      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." });
+
+      mtSelected = c.id;
+      renderObList();
+      renderObDetail();
+      renderMtList();
+      renderMtDetail();
+      document.getElementById("tabbtn-montaje").click();
+    });
+  }
+}
+
+// Mensaje que se envía por Slack al equipo de montaje al marcar Material Completo.
+// TODO producción: esto hoy solo se muestra en pantalla (ver renderMtDetail) — cuando
+// se conecte de verdad, lo dispara un webhook de n8n (mismo patrón que guardar-datos-cliente
+// en el CRM de alta) que llama a la Slack API y escribe en el canal real (#montaje-campañas).
+function buildSlackMontajeMessage(c, califica){
+  return `#montaje-campañas — Material completo, listo para arrancar
+Cliente: ${c.empresa}
+Contacto: ${c.contacto}
+Tipo de entrada: ${c.entrada}${c.cc ? " · Contact Center" : " · Sin Contact Center"}
+${califica ? "Regalo de 20 días de Contact Center: SÍ" : "Regalo de 20 días de Contact Center: no (fuera de ventana)"}
+Entidad: ${c.entidad}
+Plazo de montaje: 10 días hábiles desde hoy (${fmtFecha(today)})
+Carpeta de material: [enlace a Drive]
+→ Ficha completa en Airtable: [enlace a la ficha]`;
+}
+
+// ---------------------------------------------------------------
+// Montaje panel
+// ---------------------------------------------------------------
+let mtSelected = clientes.find(c=>c.fase==="Montaje").id;
+
+// ---- cálculo automático del Pago 2 ----
+const PAGO2_BASE = 248.50;   // resto de la cuota del mes 1 tras el Pago 1
+const CC_CHARGE = 50;
+const MONTAJE_CHARGE = 250;
+
+function moneda(c){ return c.entidad === "LLC" ? "$" : "€"; }
+function fmtMonto(n, c){ return `${n.toFixed(2).replace(/\.00$/, "")} ${moneda(c)}`; }
+
+const CC_CHARGE_REGALO = 50;    // calificó el regalo de 20 días → CC "reducido"
+const CC_CHARGE_COMPLETO = 150; // no calificó → CC completo del mes 1
+
+function calcPago2(c){
+  if (c.entrada === "Formación"){
+    return { formacion: true, items: [], total: 0 };
+  }
+  const t = c.pago2Toggles;
+  // importe de referencia del CC según califique o no el regalo — se ve
+  // siempre, aunque el propio Contact Center esté apagado
+  const ccRef = t.regaloCC ? CC_CHARGE_REGALO : CC_CHARGE_COMPLETO;
+  const ccAmount = t.cc ? ccRef : 0;
+  const penalRef = c.entidad === "LLC" ? 100 : 75;
+  const penal = t.penalizacion ? penalRef : 0;
+  const ajuste = Number(t.ajuste) || 0;
+  const total = PAGO2_BASE + ccAmount + (t.montaje ? MONTAJE_CHARGE : 0) + penal + ajuste;
+  return { formacion: false, ccRef, ccAmount, montajeRef: MONTAJE_CHARGE, penalRef, penal, ajuste, total };
+}
+
+function renderPago2Block(c){
+  const calc = calcPago2(c);
+  if (calc.formacion){
+    return `<div class="notebox ok"><b>Pago 2 = 0 €.</b> Tipo de entrada Formación/Impulsor — el segundo pago se regala siempre, no hay excepcionalidades que aplicar.</div>`;
+  }
+  const t = c.pago2Toggles;
+  // El importe de referencia se ve siempre, esté o no marcado el toggle —
+  // solo se suma al total cuando está activado.
+  const toggleRow = (key, item, indent) => `
+    <div class="price-row" ${indent ? 'style="padding-left:22px;"' : ''}>
+      <div class="lbl">${item.label}${item.hint ? `<small>${item.hint}</small>` : ""}</div>
+      <span class="amt ${item.on ? '' : 'zero'}">${item.refAmount != null ? fmtMonto(item.refAmount, c) : "—"}</span>
+      <label class="switch">
+        <input type="checkbox" data-toggle="${key}" ${item.on ? "checked" : ""} ${item.disabled ? "disabled" : ""}>
+        <span class="track"></span>
+      </label>
+    </div>
+  `;
+  return `
+    <div class="price-row">
+      <div class="lbl">Cuota mes 1 (resto tras Pago 1)<small>fijo — solo cambia a 0 € con Tipo de Entrada Formación</small></div>
+      <span class="amt">${fmtMonto(PAGO2_BASE, c)}</span>
+      <span style="width:38px;"></span>
+    </div>
+    ${toggleRow("cc", { label: "¿Contact Center contratado?", refAmount: calc.ccRef, on: t.cc })}
+    ${toggleRow("regaloCC", { label: "↳ ¿Calificó el regalo de 20 días?", hint: "entrega dentro de los 7 días — aplica aunque no tenga Contact Center contratado", refAmount: null, on: t.regaloCC })}
+    ${toggleRow("montaje", { label: "Montaje inicial", hint: "solo si no se regaló al cerrar en la misma reunión", refAmount: calc.montajeRef, on: t.montaje })}
+    ${toggleRow("penalizacion", { label: "Penalización por entrega tardía", hint: `${c.entidad} · más de 21 días naturales`, refAmount: calc.penalRef, on: t.penalizacion })}
+    <div class="price-row">
+      <div class="lbl">Ajuste manual<small>para cualquier excepción no cubierta arriba</small></div>
+      <input type="number" class="adjust-input" id="pago2-ajuste" value="${c.pago2Toggles.ajuste || 0}" step="1">
+      <span style="width:38px;"></span>
+    </div>
+    <div class="price-total">
+      <span class="lbl">Total Pago 2</span>
+      <span class="amt">${fmtMonto(calc.total, c)}</span>
+    </div>
+  `;
+}
+
+// Mismo patrón que el enlace de Stripe del Pago 1 en el CRM de alta: se
+// envía el enlace y el estado solo pasa a "Cobrado" cuando llega el webhook —
+// nunca porque el cliente diga que ya pagó. Hasta entonces, Activar Campaña
+// sigue bloqueado.
+// ---- calendario de próximos cobros, calculado desde la fecha de confirmación del Pago 2 ----
+const CUOTA_PERMANENCIA = 647;
+
+function addMonthsClampDay(baseDate, monthsToAdd, targetDay){
+  const d = new Date(baseDate);
+  d.setDate(1);
+  d.setMonth(d.getMonth() + monthsToAdd);
+  const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(targetDay, daysInMonth));
+  return d;
+}
+function fmtDateObj(d){
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function calcProximosCobros(c){
+  const hoy = new Date();
+  const diaCobro = c.metodoCicloNatural === "SEPA" ? 27 : 28;
+  // Mes 2 y Mes 3 caen en la misma fecha del mes que este Pago 2 — no en el
+  // día fijo de cobro (27/30), que solo rige a partir del ciclo natural.
+  const mes2 = addMonthsClampDay(hoy, 1, hoy.getDate());
+  const mes3 = addMonthsClampDay(hoy, 2, hoy.getDate());
+
+  // fin de permanencia: 3 meses naturales desde la confirmación de este Pago 2, misma fecha
+  const finPermanencia = addMonthsClampDay(hoy, 3, hoy.getDate());
+  const finMesNatural = new Date(finPermanencia.getFullYear(), finPermanencia.getMonth() + 1, 0);
+  const inicioProrrateo = new Date(finPermanencia); inicioProrrateo.setDate(inicioProrrateo.getDate() + 1);
+  const diasProrrateo = Math.max(0, Math.round((finMesNatural - inicioProrrateo) / 86400000) + 1);
+  const importeProrrateo = +(CUOTA_PERMANENCIA * diasProrrateo / 30).toFixed(2);
+  const cicloNatural = addMonthsClampDay(finMesNatural, 1, diaCobro);
+
+  return {
+    diaCobro,
+    mes2, mes3,
+    finPermanencia, inicioProrrateo, finMesNatural, diasProrrateo, importeProrrateo,
+    cicloNatural,
+  };
+}
+
+function renderProximosCobros(c){
+  const cal = calcProximosCobros(c);
+  const conIva = c.entidad !== "LLC";
+  const conIvaTxt = (n) => conIva ? ` + IVA = ${(n * 1.21).toFixed(2)} €` : "";
+  return `
+    <div class="section" style="margin-top:22px; padding-top:20px;">
+      <h3>Próximos cobros (calculados desde hoy, ${fmtDateObj(new Date())})</h3>
+      <div class="price-row">
+        <div class="lbl">Mes 2 de permanencia<small>${fmtDateObj(cal.mes2)} · misma fecha que este Pago 2</small></div>
+        <span class="amt">${fmtMonto(CUOTA_PERMANENCIA, c)}${conIvaTxt(CUOTA_PERMANENCIA)}</span>
+      </div>
+      <div class="price-row">
+        <div class="lbl">Mes 3 de permanencia<small>${fmtDateObj(cal.mes3)} · misma fecha que este Pago 2</small></div>
+        <span class="amt">${fmtMonto(CUOTA_PERMANENCIA, c)}${conIvaTxt(CUOTA_PERMANENCIA)}</span>
+      </div>
+      <div class="price-row">
+        <div class="lbl">Prorrateo fin de permanencia<small>${fmtDateObj(cal.inicioProrrateo)} → ${fmtDateObj(cal.finMesNatural)} · ${cal.diasProrrateo} días ÷30 × ${CUOTA_PERMANENCIA}€</small></div>
+        <span class="amt">${fmtMonto(cal.importeProrrateo, c)}${conIvaTxt(cal.importeProrrateo)}</span>
+      </div>
+      <div class="price-row" style="border-bottom:none;">
+        <div class="lbl">Ciclo natural — si el cliente continúa<small>desde ${fmtDateObj(cal.cicloNatural)} · cobro día ${cal.diaCobro} de cada mes</small></div>
+        <span class="amt">${fmtMonto(CUOTA_PERMANENCIA, c)}/mes${conIvaTxt(CUOTA_PERMANENCIA)}</span>
+      </div>
+      <p class="note-hint">Fechas orientativas a partir de la confirmación de este Pago 2 — no dependen de que el cliente siga activo; si cancela antes, esos cobros no llegan a generarse.</p>
+    </div>
+  `;
+}
+
+function renderCobroPago2Block(c){
+  const calc = calcPago2(c);
+  const conIva = c.entidad !== "LLC";
+  const totalConIva = conIva ? calc.total * 1.21 : calc.total;
+  const esperandoWebhook = c.pago2 === "Enviado";
+  const cobrado = c.pago2 === "Cobrado";
+  // El método se eligió ya en el Alta (bloque 4) y rige desde el Pago 2 en
+  // adelante — mes 2, mes 3, prorrateo y ciclo natural usan el mismo mandato/tarjeta.
+  const metodoTxt = c.metodoCicloNatural === "SEPA" ? "SEPA (domiciliación)" : "Tarjeta (Stripe Checkout)";
+
+  // Cobrado: solo se ve la tarjeta confirmada, no tiene sentido mostrar
+  // también el botón de "enviar" otra vez.
+  if (cobrado){
+    return `
+      <div class="stripe-card confirmed">
+        <h4>Enlace de pago — Stripe Checkout</h4>
+        <div class="confirmed-line">✓ Cobro confirmado por Stripe el <b class="num">${fmtFecha(today)}</b></div>
+        <div class="contact" style="margin-top:10px;">${c.contacto}</div>
+        <div class="amount-line">Pago 2 — resto cuota + excepcionalidades: <b>${fmtMonto(calc.total, c)}</b>${conIva ? ` + IVA = <b>${totalConIva.toFixed(2)} €</b>` : ""}</div>
+        <div class="method-line">Método: ${metodoTxt}</div>
+      </div>`;
+  }
+
+  const headAction = esperandoWebhook
+    ? `<button class="stripe-cta" disabled>Enviar enlace de pago →</button>`
+    : `<button class="stripe-cta" id="cb-send-stripe">Enviar enlace de pago →</button>`;
+  const statusLine = esperandoWebhook
+    ? `<div class="status">Enviado — esperando confirmación de Stripe</div>`
+    : `<div class="status">Listo para enviar</div>`;
+
+  return `
+    <div class="stripe-card">
+      <div class="stripe-card-head">
+        <h4>Enlace de pago — Stripe Checkout</h4>
+        ${headAction}
+      </div>
+      ${statusLine}
+      <div class="contact" style="margin-top:10px;">${c.contacto}</div>
+      <div class="amount-line">Pago 2 — resto cuota + excepcionalidades: <b>${fmtMonto(calc.total, c)}</b>${conIva ? ` + IVA = <b>${totalConIva.toFixed(2)} €</b>` : ""}</div>
+      <div class="method-line">Método: ${metodoTxt} — establece el mandato/tarjeta que se reutiliza en mes 2, mes 3 y el ciclo natural</div>
+      <div class="stripe-hint">Se envía por email/WhatsApp al contacto principal. Nadie avanza a "Activar Campaña" hasta comprobar que el cobro se ha confirmado de verdad — no basta con que el cliente diga que ya pagó.</div>
+      ${esperandoWebhook ? `<div class="empty-step" style="margin-top:12px;"><p style="max-width:none;">Solo para esta demo — en producción lo dispara el webhook de Stripe, no un botón:</p><button class="ghost" id="cb-simulate-webhook">Simular webhook: cobro confirmado</button></div>` : ""}
+    </div>`;
+}
+
+function slaChip(c){
+  const restan = c.slaTotal - c.slaDiasHabiles;
+  if (restan <= 0) return { text: `SLA montaje: excedido`, cls: "critical" };
+  if (restan <= 2) return { text: `SLA montaje: día ${c.slaDiasHabiles}/${c.slaTotal}`, cls: "critical" };
+  if (restan <= 4) return { text: `SLA montaje: día ${c.slaDiasHabiles}/${c.slaTotal}`, cls: "warm" };
+  return { text: `SLA montaje: día ${c.slaDiasHabiles}/${c.slaTotal}`, cls: "ok" };
+}
+
+// ---------------------------------------------------------------
+// Montaje panel (ligero) — solo clientes que el equipo está trabajando
+// ahora mismo. Sin tareas ni Pago 2 aquí: eso vive en Cobro y activación,
+// a donde el cliente pasa en cuanto Micaela marca "Campaña lista".
+// ---------------------------------------------------------------
+function renderMtList(){
+  const list = document.getElementById("mt-list");
+  list.innerHTML = "";
+  const enMontaje = clientes.filter(c=>c.fase==="Montaje");
+  if (!enMontaje.some(c=>c.id===mtSelected)) mtSelected = enMontaje[0]?.id;
+  enMontaje.forEach(c=>{
+    const card = document.createElement("button");
+    card.className = "card";
+    card.setAttribute("aria-current", c.id === mtSelected);
+    const sla = slaChip(c);
+    const regalo = regaloChip(c);
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${c.empresa}</span>
+        <span class="chip ${sla.cls}">${sla.text}</span>
+      </div>
+      <div class="card-meta"><span>${c.contacto}</span></div>
+      <div class="card-meta">
+        <span class="chip ${regalo.cls}">${regalo.text}</span>
+        <span class="chip ${c.contenidoEnviado ? "ok" : "pending"}">${c.contenidoEnviado ? "Contenido entregado" : "Contenido pendiente"}</span>
+      </div>
+    `;
+    card.addEventListener("click", ()=>{ mtSelected = c.id; renderMtList(); renderMtDetail(); });
+    list.appendChild(card);
+  });
+  if (!enMontaje.length){
+    list.innerHTML = `<p class="empty-step"><span>No hay clientes en montaje ahora mismo.</span></p>`;
+  }
+}
+
+function renderMtDetail(){
+  const c = clientes.find(x=>x.id===mtSelected);
+  if (!c){ document.getElementById("mt-detail").innerHTML = ""; return; }
+  const sla = slaChip(c);
+  const regalo = regaloChip(c);
+  const penal = penalizacionChip(c);
+  const detail = document.getElementById("mt-detail");
+  detail.innerHTML = `
+    <div class="d-head">
+      <div>
+        <div class="d-name">${c.empresa}</div>
+        <div class="d-sub">${c.contacto} · Canal de entrega: ${c.canal}</div>
+      </div>
+      <div class="d-chips">
+        <span class="chip ${sla.cls}">${sla.text}</span>
+      </div>
+    </div>
+    <div class="date-line">Compromiso simétrico de Nemetea: <b>10 días hábiles</b> desde que el cliente entregó el material completo hasta tener la campaña montada.</div>
+
+    ${c.slackMontajeEnviado ? `
+    <div class="section">
+      <h3>Aviso al equipo de montaje</h3>
+      <div class="slack-box-head">✓ Enviado por Slack el ${c.slackMontajeEnviado.when}</div>
+      <div class="slack-box">${c.slackMontajeEnviado.mensaje}</div>
+      <p class="note-hint">El equipo no abre este CRM — trabaja a partir de este aviso y de lo que encuentre en la carpeta de Drive. Cuando terminen, avisan a Micaela por Slack (fuera del CRM).</p>
+    </div>` : ""}
+
+    <div class="section">
+      <h3>Heredado de Onboarding</h3>
+      <div class="d-chips">
+        <span class="chip ${regalo.cls}">${regalo.text}</span>
+        <span class="chip ${penal.cls}">${penal.text}</span>
+      </div>
+      <div class="date-line" style="margin-top:8px;">Carpeta enviada <b>${fmtFecha(c.carpetaEnviadaDay)}</b> → material completo <b>${fmtFecha(c.materialCompletoDay)}</b> (${diasHastaEntrega(c)} días${c.prorroga ? ", en prórroga" : ""}). Micaela no vuelve a introducir estos datos — vienen del mismo registro.</div>
+    </div>
+
+    <div class="section">
+      <h3>Envío de contenido</h3>
+      <div class="price-row" style="border-bottom:none;">
+        <div class="lbl">Contenido entregado al cliente por <b>${c.canal}</b><small>enlace a la landing y los vídeos terminados</small></div>
+        <span style="width:64px;"></span>
+        <label class="switch">
+          <input type="checkbox" id="mt-contenido-toggle" ${c.contenidoEnviado ? "checked" : ""}>
+          <span class="track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-info">${c.contenidoEnviado
+        ? "Cuando el equipo avise por Slack que la campaña está lista, márcalo aquí — el cliente pasa a «Cobro y activación»."
+        : "Marca primero que el contenido ya se entregó al cliente."}</div>
+      <button class="primary" id="mt-campana-lista" ${c.contenidoEnviado ? "" : "disabled"}>Campaña lista →</button>
+    </div>
+  `;
+
+  const contenidoToggle = detail.querySelector("#mt-contenido-toggle");
+  if (contenidoToggle){
+    contenidoToggle.addEventListener("change", (e)=>{
+      c.contenidoEnviado = e.target.checked;
+      renderMtList();
+      renderMtDetail();
+    });
+  }
+  const listoBtn = detail.querySelector("#mt-campana-lista");
+  if (listoBtn && !listoBtn.disabled){
+    listoBtn.addEventListener("click", ()=>{
+      c.fase = "Cobro";
+      c.pago2 = c.pago2 || "No enviado";
+      c.pago2Toggles = c.pago2Toggles || { cc: c.cc, regaloCC: !!calificaRegaloCC(c), montaje: false, penalizacion: !!penalizacionInfo(c), ajuste: 0 };
+      c.canal = c.canal || "Email";
+      c.metodoCicloNatural = c.metodoCicloNatural || "SEPA";
+      c.historial = c.historial || [];
+      c.historial.push({ when: "hoy", note: "Equipo avisa por Slack que la campaña está lista — Micaela lo marca en el CRM." });
+
+      cbSelected = c.id;
+      renderMtList();
+      renderMtDetail();
+      renderCbList();
+      renderCbDetail();
+      document.getElementById("tabbtn-cobro").click();
+    });
+  }
+}
+
+// ---------------------------------------------------------------
+// Cobro y activación — el equipo ya avisó que la campaña está lista.
+// Aquí se envía/confirma el Pago 2 y se activa la campaña.
+// ---------------------------------------------------------------
+let cbSelected = (clientes.find(c=>c.fase==="Cobro") || {}).id;
+
+function renderCbList(){
+  const list = document.getElementById("cb-list");
+  list.innerHTML = "";
+  const enCobro = clientes.filter(c=>c.fase==="Cobro");
+  if (!enCobro.some(c=>c.id===cbSelected)) cbSelected = enCobro[0]?.id;
+  enCobro.forEach(c=>{
+    const pago2calc = calcPago2(c);
+    const card = document.createElement("button");
+    card.className = "card";
+    card.setAttribute("aria-current", c.id === cbSelected);
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${c.empresa}</span>
+        <span class="chip ${c.pago2 === "Cobrado" ? "ok" : c.pago2 === "Enviado" ? "warm" : "pending"}">Pago 2 · ${c.pago2}</span>
+      </div>
+      <div class="card-meta"><span>${c.contacto}</span></div>
+      <div class="card-meta">
+        <span class="num" style="font-size:0.78rem; color:var(--ink-dim);">Total Pago 2: <b style="color:var(--ink);">${fmtMonto(pago2calc.total, c)}</b></span>
+        ${c.activada ? `<span class="chip ok">Campaña activa</span>` : ""}
+      </div>
+    `;
+    card.addEventListener("click", ()=>{ cbSelected = c.id; renderCbList(); renderCbDetail(); });
+    list.appendChild(card);
+  });
+  if (!enCobro.length){
+    list.innerHTML = `<p class="empty-step"><span>Todavía no hay clientes con la campaña lista.</span></p>`;
+  }
+}
+
+function renderCbDetail(){
+  const c = clientes.find(x=>x.id===cbSelected);
+  if (!c){ document.getElementById("cb-detail").innerHTML = ""; return; }
+  const listo = c.pago2 === "Cobrado" && !c.activada;
+  const detail = document.getElementById("cb-detail");
+  detail.innerHTML = `
+    <div class="d-head">
+      <div>
+        <div class="d-name">${c.empresa}</div>
+        <div class="d-sub">${c.contacto} · Canal de entrega: ${c.canal}</div>
+      </div>
+      <div class="d-chips">
+        <span class="chip ${c.pago2 === "Cobrado" ? "ok" : c.pago2 === "Enviado" ? "warm" : "pending"}">Pago 2 · ${c.pago2}</span>
+        ${c.activada ? `<span class="chip ok">Campaña activa</span>` : ""}
+      </div>
+    </div>
+    <div class="date-line">Material completo <b>${fmtFecha(c.materialCompletoDay)}</b> · campaña lista confirmada por el equipo.</div>
+
+    <div class="section">
+      <h3>Segundo pago — cálculo automático</h3>
+      ${renderPago2Block(c)}
+      ${renderCobroPago2Block(c)}
+    </div>
+    ${c.pago2 === "Cobrado" ? renderProximosCobros(c) : ""}
+
+    ${c.slackLanzamientoEnviado ? `
+    <div class="section">
+      <h3>Aviso de lanzamiento</h3>
+      <div class="slack-box-head">✓ Enviado por Slack el ${c.slackLanzamientoEnviado.when}</div>
+      <div class="slack-box">${c.slackLanzamientoEnviado.mensaje}</div>
+      <p class="note-hint">El equipo lanza la campaña por su cuenta (Ads, landing…). El botón de abajo solo registra en Airtable que ya está en marcha.</p>
+    </div>` : ""}
+
+    <div class="gate">
+      <div class="gate-info">${c.activada
+        ? "<b>Campaña activa.</b> Fecha de activación registrada en Airtable."
+        : listo
+          ? "<b>Todo listo.</b> En cuanto el equipo confirme por Slack que ya está en marcha, marca aquí la activación."
+          : "Bloqueado hasta que el Pago 2 esté cobrado."}</div>
+      <button class="primary" id="cb-activate" ${listo ? "" : "disabled"}>${c.activada ? "Campaña activa ✓" : "Activar Campaña"}</button>
+    </div>
+  `;
+
+  detail.querySelectorAll('input[data-toggle]').forEach(inp=>{
+    inp.addEventListener("change", (e)=>{
+      c.pago2Toggles[e.target.dataset.toggle] = e.target.checked;
+      renderCbDetail();
+    });
+  });
+  const ajusteInput = detail.querySelector("#pago2-ajuste");
+  if (ajusteInput){
+    ajusteInput.addEventListener("change", (e)=>{
+      c.pago2Toggles.ajuste = Number(e.target.value) || 0;
+      renderCbDetail();
+    });
+  }
+  const sendStripeBtn = detail.querySelector("#cb-send-stripe");
+  if (sendStripeBtn){
+    sendStripeBtn.addEventListener("click", ()=>{
+      c.pago2 = "Enviado";
+      c.historial = c.historial || [];
+      c.historial.push({ when: "hoy", note: `Enlace de Stripe del Pago 2 (${fmtMonto(calcPago2(c).total, c)}) enviado por ${c.canal}.` });
+      renderCbList();
+      renderCbDetail();
+    });
+  }
+  const webhookBtn = detail.querySelector("#cb-simulate-webhook");
+  if (webhookBtn){
+    webhookBtn.addEventListener("click", ()=>{
+      c.pago2 = "Cobrado";
+      c.historial = c.historial || [];
+      c.historial.push({ when: "hoy", note: `Webhook de Stripe confirma el cobro del Pago 2 (${fmtMonto(calcPago2(c).total, c)}).` });
+
+      // ---- aviso a Montaje: pago confirmado, pueden lanzar la campaña ----
+      // Mismo patrón que el aviso de "material completo": se dispara solo en cuanto llega
+      // la confirmación real de Stripe, no cuando alguien dice que ya cobró.
+      c.slackLanzamientoEnviado = {
+        when: fmtFecha(today),
+        mensaje: `#montaje-campañas — Pago 2 confirmado, a lanzar
+Cliente: ${c.empresa}
+Pago 2 cobrado: ${fmtMonto(calcPago2(c).total, c)}
+→ Podéis activar la campaña cuando esté lista.`,
+      };
+      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el Pago 2 está confirmado — pueden lanzar." });
+
+      renderCbList();
+      renderCbDetail();
+    });
+  }
+  const activateBtn = detail.querySelector("#cb-activate");
+  if (activateBtn && !activateBtn.disabled){
+    activateBtn.addEventListener("click", ()=>{
+      c.activada = true;
+      c.historial = c.historial || [];
+      c.historial.push({ when: "hoy", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." });
+      renderCbList();
+      renderCbDetail();
+    });
+  }
+}
+
+renderObList();
+renderObDetail();
+renderMtList();
+renderMtDetail();
+renderCbList();
+renderCbDetail();
+</script>
+</body>
+</html>

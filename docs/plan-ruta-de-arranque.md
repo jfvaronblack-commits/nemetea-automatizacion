@@ -5,77 +5,120 @@ o el esquema de Airtable, dejar por escrito dónde encajan el mockup
 (`ruta-de-arranque.html`), el contexto de Juanfra, y el estado real de Airtable
 que describe Juan Cantele (`cobros_pagos_estado_actual_v2.md`, 07/10/2026).
 
+**Changelog**: v1.0 del mockup ya incorpora los cambios que pidió la
+compañera que lo validó. Este documento queda actualizado contra esa versión
+(commiteada en `ruta-de-arranque.html`); las secciones de abajo reflejan el
+estado actual, no el borrador inicial.
+
 ## 1. Fuentes
 
-- **Mockup** (`ruta-de-arranque.html`): 2 pestañas — Onboarding, Montaje de
-  campaña (Cobro y activación vive dentro de Montaje). Datos de ejemplo en JS,
-  sin backend.
-- **Contexto Juanfra** (PDF): interfaz construida pero **sin validar por una
-  compañera** (pidió matizarla), día de cobro Tarjeta corregido a 28 (el
-  mockup actual todavía tiene 30 en el código), Pago 2 sin workflow de n8n,
-  backend de Pago 1 ya probado.
+- **Mockup v1.0** (`ruta-de-arranque.html`, en este repo): **3 pestañas** —
+  Onboarding, Montaje de campaña, Cobro y activación (antes Cobro vivía
+  dentro de Montaje; ahora es su propia fase y pantalla). Datos de ejemplo en
+  JS, sin backend.
+- **Contexto Juanfra** (PDF, 07/10): backend de Pago 1 ya probado, Pago 2 sin
+  workflow de n8n, esquema de Cobros/Pagos nuevo propuesto por Juan.
 - **Juan Cantele v2**: esquema real de `Clientes` / `Cobros` / `Pagos` en la
   base `appEZnB8ZDVAcBDAV`, con reglas de moneda, campos obsoletos marcados
   (no borrados) y una lista propia de pendientes de cerrar con Juanfra.
 
-## 2. Lo que ya existe en Airtable y cubre al mockup
+## 2. Qué cambió entre la v1 del mockup y esta v1.0 (cambios de la compañera)
+
+Esto importa porque varios de los huecos que habíamos detectado en la
+primera pasada **desaparecieron** con estos cambios, y aparecieron otros
+nuevos:
+
+1. **3 pestañas en vez de 2.** "Cobro y activación" se separa de Montaje en
+   su propia fase (`fase: "Cobro"`) y pantalla. El cliente pasa de Montaje a
+   Cobro cuando Micaela marca "Campaña lista →", no cuando se cobra el Pago 2.
+2. **Se elimina el split Equipo 1 / Equipo 2.** Todas las pestañas muestran
+   "Micaela" como responsable — ya no hay noción de equipo asignado en esta
+   interfaz.
+3. **Se elimina la lista de 5 tareas de montaje** (Edición de vídeo,
+   Planillas, SAP, Landing, Anuncios) con responsable/estado/link. El panel
+   de Montaje ahora es mucho más ligero: un toggle de "Contenido entregado"
+   + un botón "Campaña lista →". El equipo de montaje **no usa este panel en
+   absoluto** — trabaja fuera, en sus propias herramientas, y solo entra en
+   escena vía Slack.
+4. **Dos avisos de Slack, no uno genérico:**
+   - Al marcar "Material Completo" (Onboarding → Montaje): mensaje a
+     `#montaje-campañas` con cliente, contacto, tipo de entrada, si califica
+     regalo CC, entidad y plazo de 10 días hábiles. Confirma lo que decía el
+     PDF: un único disparo en este punto.
+   - Al confirmar el cobro del Pago 2 (webhook Stripe, dentro de "Cobro y
+     activación"): **nuevo** mensaje a `#montaje-campañas` avisando que
+     pueden lanzar. Este es el que faltaba por construir según el PDF.
+5. **Día de cobro con Tarjeta ya corregido a 28** en el código
+   (`diaCobro = SEPA ? 27 : 28`). Ya no es una discrepancia pendiente.
+6. **Método de cobro**: el texto ahora es explícito — "se eligió ya en el
+   Alta y rige desde el Pago 2 en adelante (mes 2, mes 3, prorrateo, ciclo
+   natural)". Coincide con lo que pedía el PDF y con
+   `Clientes.Método de Cobro Recurrente`.
+7. **Activar Campaña** ya no es un `alert()`: ahora marca `c.activada = true`
+   y registra una nota de historial ("se registra Fecha de Activación y pasa
+   a «Activa» en Campañas") — y esos dos campos **ya existen** en
+   `Campañas` (`Fecha de Activación`, `Estado de la Campaña`).
+
+Nota técnica aparte: el HTML subido traía una envoltura duplicada
+(`<!doctype html><html>…</html>` de una vista previa, antes y después del
+documento real). La versión que copié al repo ya viene limpia — un solo
+documento.
+
+## 3. Lo que ya existe en Airtable y cubre al mockup
 
 | Concepto del mockup | Campo/tabla real | Nota |
 |---|---|---|
-| Entidad (SLU/LLC) → moneda | `Clientes.Moneda` + `Clientes.Tasa Aplicada` | El mock decide USD por `entidad`; Juan dice que lo correcto es `Moneda`, no la entidad. Hay que cambiar el criterio. |
-| Método de cobro (SEPA/Tarjeta) | `Clientes.Método de Cobro Recurrente` | Existe ya a nivel cliente — coincide con lo que pide el PDF ("se elige desde el alta, aplica desde Pago 1"). |
+| Entidad (SLU/LLC) → moneda | `Clientes.Moneda` + `Clientes.Tasa Aplicada` | El mock decide USD por `entidad`; Juan dice que lo correcto es `Moneda`, no la entidad. Sigue pendiente de cambiar el criterio en el mock. |
+| Método de cobro (SEPA/Tarjeta) | `Clientes.Método de Cobro Recurrente` | Ya a nivel cliente, y el mock v1.0 ya lo trata como fijado desde el Alta — coincide. |
 | Pago 1 | `Pagos` con `Tipo = Pago 1`, `Nº de cuota = 1` | Backend ya probado según el PDF — falta confirmar si ya escribe en `Pagos` o todavía en los campos `[OBSOLETO]` de `Clientes` (pregunta abierta de Juan, ver §5). |
-| Pago 2 / activación | `Pagos` con `Tipo = Segundo pago`, `Nº de cuota = 2` | Sin workflow n8n todavía. El disparo a Gonzalo que hoy es un `alert()` en el mock debe ser: esta fila pasa a `Pagado`. |
-| Ajustes del Pago 2 (regalo CC, penalización, montaje, ajuste manual) | `Pagos.Concepto de ajuste` (select: Beneficio contact center / Penalización ampliación de plazo / Descuento comercial / Descuento referidos / Otro) + `Pagos.Importe ajuste` | El mock tiene 4 toggles independientes; Airtable modela **un** concepto de ajuste por fila. Si Pago 2 necesita varios ajustes a la vez (CC + penalización, p.ej.) hace falta más de una fila de `Pagos` tipo `Extra`, o ampliar el select. Pendiente de decidir. |
+| Pago 2 | `Pagos` con `Tipo = Segundo pago`, `Nº de cuota = 2` | Sin workflow n8n todavía. El webhook debe: marcar esta fila `Pagado` + disparar el Slack de "a lanzar" (nuevo en v1.0) + habilitar el botón "Activar Campaña". |
+| Activar Campaña | `Campañas.Fecha de Activación` + `Campañas.Estado de la Campaña` | Ya existen — no hace falta modelar nada nuevo para esto. |
+| Ajustes del Pago 2 (regalo CC, penalización, montaje, ajuste manual) | `Pagos.Concepto de ajuste` (select: Beneficio contact center / Penalización ampliación de plazo / Descuento comercial / Descuento referidos / Otro) + `Pagos.Importe ajuste` | El mock tiene 4 toggles independientes; Airtable modela **un** concepto de ajuste por fila. Si Pago 2 necesita varios ajustes a la vez (CC + penalización, p.ej.) hace falta más de una fila de `Pagos` tipo `Extra`, o ampliar el select. Pendiente de decidir (§5.6). |
 | Checklist "Primeros Pasos" | `Clientes.Primeros Pasos` / `Respuestas Primeros Pasos` | Existe tabla de respuestas — falta ver si cubre fotos/vídeos o solo el formulario. |
-| Total a cobrar, IVA, descuento referidos | `Clientes.Total a Cobrar (EUR) (calc)` / `...(Moneda de Cobro) (calc)` | Fórmula ya corregida por Juan el 07/10 (antes no sumaba Contact Center en SL). El mock calcula esto a mano con constantes propias — hay que sustituirlo por estos campos, no reimplementar la fórmula en JS. |
+| Total a cobrar, IVA, descuento referidos | `Clientes.Total a Cobrar (EUR) (calc)` / `...(Moneda de Cobro) (calc)` | Fórmula ya corregida por Juan el 07/10. El mock sigue calculando esto a mano con constantes propias (`PAGO2_BASE`, `CC_CHARGE_REGALO`, etc.) — hay que sustituirlo por estos campos, no reimplementar la fórmula en JS. |
 
-## 3. Lo que el mockup rastrea y **no existe** todavía en Airtable
+## 4. Lo que el mockup rastrea y **no existe** todavía en Airtable
 
-Esto es nuevo trabajo de modelado, no solo de conexión:
+Con la simplificación de montaje (§2.3), esta lista se acorta bastante
+respecto a la primera pasada:
 
-1. **Carpeta de Drive enviada (fecha) + plazo de 21 días naturales + prórroga.**
-   No hay campo en `Clientes` para esto. Candidatos: nuevos campos en
-   `Clientes`, o eventos en `Actividades` (ya existe la tabla, con
+1. **Carpeta de Drive enviada (fecha) + plazo de 21 días naturales +
+   prórroga.** Sigue sin campo en `Clientes`. Candidatos: campos nuevos en
+   `Clientes`, o eventos en `Actividades` (ya existe, con
    `Fecha de Ejecución`, `Resultado de la Actividad`, `Tipo de Actividad`).
-   Actividades parece más coherente con el resto del esquema que añadir más
-   campos sueltos a `Clientes`.
-2. **Checklist de material (fotos / vídeos / formulario) con estado por ítem.**
-   Puede vivir en `Respuestas Primeros Pasos` si ese modelo ya es extensible,
-   o necesitar su propio tracking.
-3. **Tareas de montaje** (Edición de vídeo, Planillas, SAP, Landing, Anuncios)
-   con responsable, estado (Pendiente/En curso/Completado) y link de entrega.
-   No hay tabla para esto hoy. Opciones: reusar `Actividades` con
-   `Tipo de Actividad` = cada una de las 5 tareas, o crear tabla nueva
-   `Tareas de Montaje`. Afecta a n8n (quién dispara cada tarea) y a quién la
-   marca completada (¿Airtable directo, o esta interfaz?).
-4. **SLA de 10 días hábiles de montaje** (día X/10, calculado desde
-   "material completo"). Necesita el campo de origen (ver punto 1, el
-   antecesor) más lógica de días hábiles — no existe como fórmula hoy.
-5. **Historial de comunicación por cliente** (notas tipo comentario). El mock
-   usa un campo de comentarios nativo simulado — puede mapear a comentarios
-   nativos de Airtable sobre el registro de `Clientes`, en vez de un campo de
-   texto largo.
+   `Actividades` parece más coherente con el resto del esquema.
+2. **Checklist de material** (fotos / vídeos / formulario) con estado por
+   ítem — a confirmar si `Respuestas Primeros Pasos` ya lo cubre.
+3. **SLA de 10 días hábiles de montaje** (día X/10, calculado desde
+   "material completo"). Depende del punto 1 (fecha de origen) más lógica de
+   días hábiles — no existe como fórmula hoy.
+4. **Contenido entregado + canal de entrega** (el toggle y el `canal` del
+   panel de Montaje). No hay campo hoy para esto.
+5. **Registro de los dos avisos de Slack** (mensaje + fecha de envío, los
+   dos `slackMontajeEnviado` / `slackLanzamientoEnviado` del mock). Puede
+   bastar con loguearlo como nota/comentario o como fila en `Actividades`
+   (`Tipo de Actividad` = "Aviso Slack montaje" / "Aviso Slack lanzamiento")
+   — no necesita campos nuevos si se modela como actividad.
+6. **Historial de comunicación por cliente** (notas tipo comentario). Puede
+   mapear a comentarios nativos de Airtable sobre el registro de `Clientes`.
 
-## 4. Discrepancias a corregir antes de construir
+Ya **no** hace falta modelar (resuelto por el cambio de la compañera,
+ver §2.3): tareas de montaje con responsable/estado/link, ni tabla de
+"Equipo 1/Equipo 2".
 
-- **Día de cobro con Tarjeta**: el código del mock todavía tiene `30`
-  (`const diaCobro = ... === "SEPA" ? 27 : 30`); el PDF dice que el valor
-  correcto es **28**. Falta aplicarlo.
-- **Entidad vs. Moneda** para decidir USD: el mock usa `entidad === "LLC"`,
-  Juan dice que el campo correcto es `Clientes.Moneda` (puede haber
-  excepciones no ligadas 1:1 a la entidad).
+## 5. Discrepancias a corregir antes de construir
+
+- **Entidad vs. Moneda** para decidir USD: el mock usa `entidad === "LLC"`
+  (función `moneda(c)`), Juan dice que el campo correcto es `Clientes.Moneda`
+  (puede haber excepciones no ligadas 1:1 a la entidad). Sigue sin corregir.
 - **Fórmula de Total a Cobrar**: el mock reimplementa el cálculo con
-  constantes locales (`PAGO2_BASE`, `CC_CHARGE`, etc.) en vez de leer
-  `Clientes.Total a Cobrar (EUR) (calc)` / `...(Moneda de Cobro) (calc)`.
-  Una vez conectado, estas constantes deberían desaparecer del HTML.
-- **Interfaz sin validar**: el PDF dice explícitamente que una compañera pidió
-  matizar la interfaz y que sus cambios **no se han aplicado todavía**. Antes
-  de invertir en conectar backend, conviene saber qué pidió — si afecta al
-  flujo (pestañas, pasos, textos) es más barato cambiarlo ahora que después
-  de cablear Airtable.
+  constantes locales en vez de leer los campos `(calc)` de `Clientes`. Una
+  vez conectado, estas constantes deberían desaparecer del HTML.
+- ~~Día de cobro con Tarjeta~~ — corregido en v1.0 (28).
+- ~~Interfaz sin validar~~ — resuelto: esta v1.0 ya incorpora los cambios de
+  la compañera.
 
-## 5. Preguntas abiertas (combinando las de Juan + nuevas del cruce)
+## 6. Preguntas abiertas (combinando las de Juan + nuevas del cruce)
 
 De Juan (su doc, §11, sin resolver aún):
 1. ¿Dónde escribe hoy el flujo de Pago 1 y cuándo lo migra a `Pagos`?
@@ -84,55 +127,61 @@ De Juan (su doc, §11, sin resolver aún):
 3. ¿La carga histórica la hace Juanfra directo en Airtable, o Juan prepara un
    CSV con el formato de `Pagos`?
 
-Nuevas, de este cruce:
-4. ¿Qué pidió matizar la compañera que validó la interfaz? (bloqueante para
-   no reconstruir dos veces)
-5. Onboarding (carpeta enviada / plazo / prórroga / checklist) y Tareas de
-   montaje: ¿viven en `Actividades`, en campos nuevos de `Clientes`, o en
-   tablas nuevas? Quién es el dueño de esa decisión de modelado (¿Juan,
+Nuevas, de este cruce (actualizadas tras v1.0):
+4. Onboarding (carpeta enviada / plazo / prórroga / checklist) y SLA de
+   montaje: ¿viven en `Actividades`, en campos nuevos de `Clientes`, o se
+   necesita algo más? Quién es el dueño de esa decisión de modelado (¿Juan,
    Juanfra, o se decide junto con Gonzalo/Micaela que son quienes operan
    estas pantallas)?
-6. Los 4 ajustes del Pago 2 del mock (CC, penalización, montaje, manual)
+5. Los 4 ajustes del Pago 2 del mock (CC, penalización, montaje, manual)
    ¿pueden coexistir en una misma cuota, y si sí, cómo se modela con un único
    `Concepto de ajuste` por fila de `Pagos`?
-7. ¿Quién genera las filas `Mensual` futuras de `Pagos` (cuota 3, 4, 5...) y
+6. ¿Quién genera las filas `Mensual` futuras de `Pagos` (cuota 3, 4, 5...) y
    en qué día del mes — n8n con un cron, o se generan todas de una vez al
    confirmar Pago 2?
-8. Confirmar que el disparo único de Slack al marcar "Material Completo" (que
-   menciona el PDF) sigue siendo el único aviso, y que el nuevo aviso de
-   Pago 2 cobrado (→ Gonzalo) es un disparo aparte, no el mismo.
+7. **Nuevo**: los dos avisos de Slack (`#montaje-campañas`) — ¿quién tiene
+   (o crea) el webhook/app de Slack para ese canal, y lo dispara n8n o lo
+   dispara esta interfaz directamente? ¿Hace falta guardar el mensaje enviado
+   en Airtable (como actividad) o basta con que quede en Slack?
+8. **Nuevo**: con el panel de Montaje reducido a "Contenido entregado" +
+   "Campaña lista →", ¿quién marca ese botón en la práctica — Micaela
+   esperando el aviso del equipo por Slack (como dice el mock), o hace falta
+   que el propio equipo de montaje tenga algún disparador (p. ej. reaccionar
+   al mensaje de Slack) en vez de depender de que Micaela lo traduzca a mano?
 
-## 6. Qué no se toca todavía
+## 7. Qué no se toca todavía
 
 - Nada en Airtable: no se crean campos, no se borran los `[OBSOLETO]`, no se
   cargan pagos de prueba en `Pagos`/`Cobros` (ambas están vacías en
   producción).
-- No se construye el workflow de n8n para Pago 2.
+- No se construye el workflow de n8n para Pago 2 ni la integración de Slack.
 - No se reescribe `ruta-de-arranque.html` para leer/escribir Airtable todavía.
 
-## 7. Fases propuestas (para discutir, no para arrancar solas)
+## 8. Fases propuestas (para discutir, no para arrancar solas)
 
-1. **Cerrar huecos de modelo** (§3) con Juan/Gonzalo/Micaela: decidir dónde
-   vive onboarding (carpeta/plazo/prórroga/checklist) y montaje (tareas).
-   Sin esto, conectar el frontend deja la mitad de la pantalla sin dónde
-   escribir.
-2. **Aplicar la validación pendiente de la compañera** sobre la interfaz
-   (pregunta 4) antes de cablear nada, para no reconstruir dos veces.
-3. **Conectar lectura** (mockup → Airtable real, solo lectura) para las partes
-   que ya tienen campo: identidad del cliente, moneda, total a cobrar, estado
-   de Pago 1/Pago 2 desde `Pagos`. Sin escritura todavía — sirve para validar
-   que el mapeo de campos es correcto contra datos reales.
-4. **Construir el workflow de n8n de Pago 2** (enlace Stripe → webhook →
-   `Pagos.Estado = Pagado` → aviso a Gonzalo), una vez resueltas las
-   preguntas 1–3 y 6–8.
-5. **Conectar escritura** desde la interfaz para los campos que de verdad debe
-   tocar un humano (marcar checklist, marcar tareas de montaje, activar
-   campaña) — el resto lo escribe n8n/Stripe, nunca la interfaz a mano.
+1. **Cerrar huecos de modelo** (§4) con Juan/Gonzalo/Micaela: dónde vive
+   onboarding (carpeta/plazo/prórroga/checklist), SLA de montaje, contenido
+   entregado, y el registro de los avisos de Slack. Más corto que en la
+   primera pasada porque las tareas de montaje ya no necesitan modelo.
+2. ~~Aplicar la validación pendiente de la compañera~~ — hecho, es esta v1.0.
+3. **Conectar lectura** (mockup → Airtable real, solo lectura) para las
+   partes que ya tienen campo: identidad del cliente, moneda, total a
+   cobrar, estado de Pago 1/Pago 2 desde `Pagos`. Sin escritura todavía —
+   sirve para validar que el mapeo de campos es correcto contra datos
+   reales.
+4. **Construir el workflow de n8n de Pago 2 + los dos avisos de Slack**
+   (enlace Stripe → webhook → `Pagos.Estado = Pagado` → Slack "a lanzar"),
+   una vez resueltas las preguntas 1–3 y 5–7.
+5. **Conectar escritura** desde la interfaz para los campos que de verdad
+   debe tocar un humano (checklist, contenido entregado, campaña lista,
+   activar campaña) — el resto lo escribe n8n/Stripe, nunca la interfaz a
+   mano.
 
-## 8. Referencia rápida de IDs (de Juan)
+## 9. Referencia rápida de IDs (de Juan)
 
 - Base: `appEZnB8ZDVAcBDAV`
 - `Clientes`: `tbl6noqdseYfm4czi`
 - `Cobros`: `tblpOwmanZUoUWcvH`
 - `Pagos`: `tbl1wdaroBGCGCs30`
 - `Actividades`: `tbliKYom7iqz7NfAX`
+- `Campañas`: `tbleWdnYTdDph5cVQ`
