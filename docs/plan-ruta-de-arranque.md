@@ -5,6 +5,36 @@ o el esquema de Airtable, dejar por escrito dónde encajan el mockup
 (`ruta-de-arranque.html`), el contexto de Juanfra, y el estado real de Airtable
 que describe Juan Cantele (`cobros_pagos_estado_actual_v2.md`, 07/10/2026).
 
+## 0. Para el sync de mañana (08/10) con Juan
+
+Punch list, de más a menos bloqueante. Cada uno enlaza a su detalle más
+abajo:
+
+1. **¿Cuál Pago 1 es el autoritativo hoy?** — hay dos implementaciones en
+   paralelo: la legacy (sobre Google Sheets + Holded) y la nueva en
+   pruebas (sobre Airtable, pero escribiendo en campos `[OBSOLETO]` de
+   `Clientes`, no en `Pagos`). (§6.1, §7.2)
+2. **¿Se retiran los workflows legacy 1–9** una vez se porte su lógica
+   (prorrateo, suscripción bridge, facturación Stripe+Holded) a workflows
+   nuevos sobre Airtable, o conviven un tiempo? (§7.2, decidido: se
+   construye nuevo portando la lógica, no reutilizando los workflows)
+3. **¿Quién crea el registro de `Cobros`** por cliente — el flujo al
+   firmar contrato, o el script de carga de Juan? (§6.2, pregunta de Juan)
+4. **¿Cómo llegan a filas de `Pagos`** cada cobro de la suscripción (mes 2,
+   mes 3, prorrateo, ciclo natural) — ¿un webhook de Stripe crea la fila al
+   vuelo, o hace falta un paso intermedio? (§6.6)
+5. **Modelo de datos de Onboarding/SLA** (carpeta enviada, plazo 21 días,
+   prórroga, checklist, SLA de montaje) — sigue sin campo en Airtable; falta
+   decidir dónde vive y quién es el dueño de esa decisión. (§4, §6.4)
+6. **Canal de Slack**: ¿se reutiliza `#activación-de-campaña` (ya existe y
+   ya lo usa el pipeline legacy) o se crea uno nuevo para Ruta de Arranque?
+   ¿Lo dispara n8n o la interfaz? (§7.3, §6.7)
+7. Carga histórica de pagos: ¿la hace Juanfra directo en Airtable, o Juan
+   prepara un CSV con el formato de `Pagos`? (§6.3, pregunta de Juan)
+8. Los 4 ajustes del Pago 2 del mock (CC, penalización, montaje, manual)
+   — ¿pueden coexistir en una misma cuota con un único `Concepto de
+   ajuste` por fila? (§6.5)
+
 **Changelog**: v1.0 del mockup ya incorpora los cambios que pidió la
 compañera que lo validó. Este documento queda actualizado contra esa versión
 (commiteada en `ruta-de-arranque.html`); las secciones de abajo reflejan el
@@ -243,15 +273,23 @@ distinto al que se está construyendo con `Ruta de Arranque` + Airtable +
 el esquema de Juan. Esto es una pregunta de arquitectura real para el sync
 del jueves, no algo que yo deba decidir:
 
-- **¿Se migran estos workflows 1–9 para que escriban en Airtable** (mismo
-  mecanismo de Stripe, redirigiendo las escrituras de Sheets/Clientes a
-  `Pagos`/`Cobros`)**, o se reconstruyen desde cero sobre Airtable
-  reusando solo el mecanismo** (bridge subscription, cálculo de gap, día
-  27/28)?
+- **Decidido con Juanfra**: no se reutilizan los workflows 1–9 tal cual (
+  arrastran Google Sheets, Calendly, la duplicación SLU/LLC y TEST/PROD, y
+  mezclan Pago 1 con Pago 2 en el mismo flujo). Se construyen workflows
+  **nuevos, sobre Airtable**, **portando** (copiando y adaptando, no
+  reinventando) las tres piezas de lógica ya resueltas y probadas:
+  1. El cálculo del gap/prorrateo (IVA 21%, retención 15% autónomo,
+     redondeo en céntimos, cupón de descuento por referido).
+  2. Los parámetros exactos de creación de la suscripción bridge
+     (`billing_cycle_anchor` con tope de seguridad + hora aleatoria,
+     `cancel_at` a 2 meses del anchor, `metadata.bridge_phase`).
+  3. La doble facturación Stripe + Holded (factura en Holded, marcarla
+     pagada, enviarla; invoice item + invoice en Stripe).
 - El propio Pago 1 ya tiene **dos implementaciones en paralelo** ahora
   mismo: la legacy (`1. SLU Initial payment`, sobre Sheets+Holded) y la
   nueva en pruebas (`Stripe - Enviar Enlace de Pago (Pago 1) [TEST]`,
-  sobre Airtable, §6.1). Falta saber cuál es la autoritativa hoy.
+  sobre Airtable, §6.1). Sigue sin resolver cuál es la autoritativa hoy —
+  pendiente de confirmar con Juanfra/Juan en el sync.
 
 ### 7.3 Otro hallazgo: el canal de Slack ya existe, y no es el que inventé
 
