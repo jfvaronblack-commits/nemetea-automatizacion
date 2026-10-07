@@ -48,21 +48,31 @@ completo de la tabla para contrastar los supuestos del mockup. Resultado:
 las fórmulas de dinero están bien entendidas, pero el mockup usa etiquetas
 de entidad/moneda/tipo de entrada que **no existen** en Airtable.
 
-**Correcciones a aplicar en el mockup** (pendiente de hacer, no hechas
-todavía):
+**Correcciones aplicadas al mockup** (hecho, commiteado):
 
-1. **`Entidad Contratante` no tiene "SLU".** Opciones reales: `SL`, `SL
-   Canarias`, `Autónomo Eduardo`, `LLC`, `LLC España`, `LLC Extranjero`,
-   `Pendiente de Confirmar`. El mockup usa `"SLU"` / `"LLC"` como si fueran
-   las únicas dos — hay que usar las etiquetas reales (y el Factor Impuesto
-   real depende de cuál: 1.21 para `SL`, 1.07 para `SL Canarias` o `SL` con
-   Canarias marcado, 1.06 para `Autónomo Eduardo`, 1 para cualquier `LLC*`).
-2. **`Moneda` tiene 3 opciones, no 2**: `EUR`, `USD`, `MXN`. El mockup solo
-   calcula € o $ a partir de la entidad — no contempla MXN ni usa el campo
-   `Moneda` real para decidir (coincide con la discrepancia ya anotada en
-   §5: "Entidad vs. Moneda").
-3. **`Tipo de Entrada` tiene una 3ª opción**: `Primer mes gratis`, además de
-   `Estándar` y `Formación` (que el mockup ya tiene). No está contemplada.
+1. ~~`Entidad Contratante` no tiene "SLU".~~ — **corregido**. Las 7 opciones
+   reales (`SL`, `SL Canarias`, `Autónomo Eduardo`, `LLC`, `LLC España`,
+   `LLC Extranjero`, `Pendiente de Confirmar`) existían en Airtable, el
+   mockup usaba `"SLU"` que no es una de ellas. Cambiado a `"SL"` en los 7
+   clientes de ejemplo que lo usaban. Donde el código comparaba
+   `entidad === "LLC"` (penalización, IVA) ahora usa un helper `esLLC()`
+   por prefijo, para cubrir también `LLC España`/`LLC Extranjero` — antes
+   solo reconocía el valor exacto `"LLC"`. El Factor Impuesto real completo
+   (1.21/1.07/1.06/1 según las 4 familias) sigue sin implementarse del todo
+   en el mockup — eso espera a la conexión real con los campos `(calc)` de
+   Airtable (§5), no tiene sentido reimplementar la fórmula completa en JS
+   dos veces.
+2. ~~`Moneda` tiene 3 opciones, no 2.~~ — **corregido**. Se añadió un campo
+   `moneda` (EUR/USD/MXN) independiente de `entidad` a cada cliente de
+   ejemplo, y `fmtMonto`/`moneda()` ahora leen ese campo en vez de inferir
+   € o $ de la entidad. USD y MXN se muestran por código (no por símbolo
+   `$`, ambiguo entre los dos) para no confundirlos.
+3. `Tipo de Entrada` tiene una 3ª opción (`Primer mes gratis`) que el
+   mockup no contempla — **no se tocó**: ningún cliente de ejemplo la usa
+   hoy y su efecto en el cálculo del Pago 2 no está definido (¿se trata
+   igual que "Formación", o solo afecta al Pago 1?). Añadir un cliente de
+   ejemplo con esa entrada sin saber su lógica de cobro sería inventar
+   comportamiento — queda para cuando se sepa.
 4. **`Método de Cobro Recurrente`**: `SEPA` / `Tarjeta` — coincide
    exactamente con el mockup, sin cambios.
 5. Las fórmulas de `Total a Cobrar (EUR) (calc)` se verificaron a mano

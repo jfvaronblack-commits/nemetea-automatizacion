@@ -433,7 +433,8 @@ const clientes = [
     contacto: "Sara Muñiz",
     entrada: "Estándar",
     cc: true,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Onboarding",
     pago1Day: 0,
     carpetaEnviadaDay: null,
@@ -453,7 +454,8 @@ const clientes = [
     contacto: "Nayara Ibáñez",
     entrada: "Estándar",
     cc: true,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Onboarding",
     pago1Day: -5,
     carpetaEnviadaDay: -4,
@@ -474,7 +476,8 @@ const clientes = [
     contacto: "Rubén Casals",
     entrada: "Estándar",
     cc: true,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Onboarding",
     pago1Day: -19,
     carpetaEnviadaDay: -19,
@@ -495,7 +498,8 @@ const clientes = [
     contacto: "Alba Ferreiro",
     entrada: "Formación",
     cc: false,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Onboarding",
     pago1Day: -12,
     carpetaEnviadaDay: -11,
@@ -516,6 +520,7 @@ const clientes = [
     entrada: "Estándar",
     cc: true,
     entidad: "LLC",
+    moneda: "USD",
     fase: "Onboarding",
     pago1Day: -30,
     carpetaEnviadaDay: -29,
@@ -539,7 +544,8 @@ const clientes = [
     contacto: "Diego Ferrán",
     entrada: "Estándar",
     cc: true,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Cobro",   // equipo ya avisó "campaña lista" — Pago 2 cobrado y campaña ya activada
     pago1Day: -22,
     carpetaEnviadaDay: -20,
@@ -585,7 +591,8 @@ Activada por Micaela el ${fmtFecha(-1)}
     contacto: "Paula Roig",
     entrada: "Estándar",
     cc: true,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Cobro",   // equipo ya avisó "campaña lista" — Pago 2 enviado, esperando que el cliente pague
     pago1Day: -19,
     carpetaEnviadaDay: -18,
@@ -614,7 +621,8 @@ Activada por Micaela el ${fmtFecha(-1)}
     contacto: "Yasmina Roldán",
     entrada: "Estándar",
     cc: true,
-    entidad: "SLU",
+    entidad: "SL",
+    moneda: "EUR",
     fase: "Montaje",   // todavía trabajando — el equipo aún no ha avisado que la campaña está lista
     pago1Day: -36,
     carpetaEnviadaDay: -35,
@@ -665,7 +673,13 @@ document.querySelectorAll(".tab").forEach(btn=>{
 // ---------------------------------------------------------------
 const PLAZO_BASE = 21;       // días naturales — plazo formal del contrato
 const PLAZO_PRORROGA = 42;   // 21 + 21 si pide prórroga voluntaria
-const PENALIZACION = { SLU: "75 €", LLC: "100 $" };
+
+// Entidad Contratante real (Airtable): SL, SL Canarias, Autónomo Eduardo,
+// LLC, LLC España, LLC Extranjero, Pendiente de Confirmar — nunca "SLU".
+// Las tres variantes de LLC se tratan igual a efectos de penalización/IVA,
+// por eso se comprueba el prefijo en vez de comparar con un valor exacto.
+function esLLC(entidad){ return (entidad || "").startsWith("LLC"); }
+function penalizacionMonto(entidad){ return esLLC(entidad) ? "100 $" : "75 €"; }
 
 function fmtFecha(offsetDays){
   const d = new Date();
@@ -704,11 +718,11 @@ function regaloChip(c){
   if (r === null) return { text: "Regalo CC · pendiente", cls: "pending" };
   return r ? { text: "Regalo CC · 20 días gratis", cls: "ok" } : { text: "Regalo CC · no aplica", cls: "pending" };
 }
-// Penalización por superar los 21 días naturales: 75€ (SLU) / 100$ (LLC).
+// Penalización por superar los 21 días naturales: 75€ (SL*) / 100$ (LLC*).
 function penalizacionInfo(c){
   if (c.carpetaEnviadaDay === null || c.carpetaEnviadaDay === undefined) return null;
   if (diasHastaEntrega(c) <= PLAZO_BASE) return null;
-  return { entidad: c.entidad, monto: PENALIZACION[c.entidad] || "75 €" };
+  return { entidad: c.entidad, monto: penalizacionMonto(c.entidad) };
 }
 function penalizacionChip(c){
   const p = penalizacionInfo(c);
@@ -781,7 +795,7 @@ function renderObDetail(){
     const transcurrido = today - c.carpetaEnviadaDay;
     const pctTrack = Math.min(100, Math.max(0, Math.round(transcurrido / limite * 100)));
     const regalo = calificaRegaloCC(c);
-    const penal = PENALIZACION[c.entidad] || "75 €";
+    const penal = penalizacionMonto(c.entidad);
 
     let penalBlock = "";
     if (restan < 0 && !c.prorroga){
@@ -944,7 +958,11 @@ const PAGO2_BASE = 248.50;   // resto de la cuota del mes 1 tras el Pago 1
 const CC_CHARGE = 50;
 const MONTAJE_CHARGE = 250;
 
-function moneda(c){ return c.entidad === "LLC" ? "$" : "€"; }
+// Clientes.Moneda real: EUR, USD o MXN — nunca se infiere de la entidad.
+// USD y MXN comparten el símbolo "$", así que se muestra el código para
+// no confundirlos.
+const SIMBOLO_MONEDA = { EUR: "€", USD: "USD", MXN: "MXN" };
+function moneda(c){ return SIMBOLO_MONEDA[c.moneda] || c.moneda || "€"; }
 function fmtMonto(n, c){ return `${n.toFixed(2).replace(/\.00$/, "")} ${moneda(c)}`; }
 
 const CC_CHARGE_REGALO = 50;    // calificó el regalo de 20 días → CC "reducido"
@@ -959,7 +977,7 @@ function calcPago2(c){
   // siempre, aunque el propio Contact Center esté apagado
   const ccRef = t.regaloCC ? CC_CHARGE_REGALO : CC_CHARGE_COMPLETO;
   const ccAmount = t.cc ? ccRef : 0;
-  const penalRef = c.entidad === "LLC" ? 100 : 75;
+  const penalRef = esLLC(c.entidad) ? 100 : 75;
   const penal = t.penalizacion ? penalRef : 0;
   const ajuste = Number(t.ajuste) || 0;
   const total = PAGO2_BASE + ccAmount + (t.montaje ? MONTAJE_CHARGE : 0) + penal + ajuste;
@@ -1051,7 +1069,7 @@ function calcProximosCobros(c){
 
 function renderProximosCobros(c){
   const cal = calcProximosCobros(c);
-  const conIva = c.entidad !== "LLC";
+  const conIva = !esLLC(c.entidad);
   const conIvaTxt = (n) => conIva ? ` + IVA = ${(n * 1.21).toFixed(2)} €` : "";
   return `
     <div class="section" style="margin-top:22px; padding-top:20px;">
@@ -1079,7 +1097,7 @@ function renderProximosCobros(c){
 
 function renderCobroPago2Block(c){
   const calc = calcPago2(c);
-  const conIva = c.entidad !== "LLC";
+  const conIva = !esLLC(c.entidad);
   const totalConIva = conIva ? calc.total * 1.21 : calc.total;
   const esperandoWebhook = c.pago2 === "Enviado";
   const cobrado = c.pago2 === "Cobrado";
