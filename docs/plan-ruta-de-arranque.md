@@ -84,7 +84,7 @@ documento.
 | Método de cobro (SEPA/Tarjeta) | `Clientes.Método de Cobro Recurrente` | Ya a nivel cliente, y el mock v1.0 ya lo trata como fijado desde el Alta — coincide. |
 | Pago 1 | `Pagos` con `Tipo = Pago 1`, `Nº de cuota = 1` | Backend ya probado según el PDF — falta confirmar si ya escribe en `Pagos` o todavía en los campos `[OBSOLETO]` de `Clientes` (pregunta abierta de Juan, ver §5). |
 | Pago 2 | `Pagos` con `Tipo = Segundo pago`, `Nº de cuota = 2` | Sin workflow n8n todavía. El webhook debe: marcar esta fila `Pagado` + disparar el Slack de "a lanzar" (nuevo en v1.0) + habilitar el botón "Activar Campaña". |
-| Enlace de pago copiable (Pago 2) | `Pagos.Enlace de pago` (`fld64ioSvid9yoLur`, url) | Ya existe en el esquema de Juan, descrito literalmente como "fallback para copiar y mandar a mano" — encaja con el pedido de la compañera. Falta la **caducidad de 48h**, que no tiene campo propio (§4). |
+| Enlace de pago copiable (Pago 2) | `Pagos.Enlace de pago` (`fld64ioSvid9yoLur`, url) | Ya existe en el esquema de Juan, descrito literalmente como "fallback para copiar y mandar a mano" — encaja con el pedido de la compañera. Caducidad decidida en 24h (§6.9), sin campo propio todavía (§4.6). |
 | Activar Campaña | `Campañas.Fecha de Activación` + `Campañas.Estado de la Campaña` | Ya existen — no hace falta modelar nada nuevo para esto. |
 | Ajustes del Pago 2 (regalo CC, penalización, montaje, ajuste manual) | `Pagos.Concepto de ajuste` (select: Beneficio contact center / Penalización ampliación de plazo / Descuento comercial / Descuento referidos / Otro) + `Pagos.Importe ajuste` | El mock tiene 4 toggles independientes; Airtable modela **un** concepto de ajuste por fila. Si Pago 2 necesita varios ajustes a la vez (CC + penalización, p.ej.) hace falta más de una fila de `Pagos` tipo `Extra`, o ampliar el select. Pendiente de decidir (§5.6). |
 | Checklist "Primeros Pasos" | `Clientes.Primeros Pasos` / `Respuestas Primeros Pasos` | Existe tabla de respuestas — falta ver si cubre fotos/vídeos o solo el formulario. |
@@ -158,9 +158,14 @@ Nuevas, de este cruce (actualizadas tras v1.0):
 5. Los 4 ajustes del Pago 2 del mock (CC, penalización, montaje, manual)
    ¿pueden coexistir en una misma cuota, y si sí, cómo se modela con un único
    `Concepto de ajuste` por fila de `Pagos`?
-6. ¿Quién genera las filas `Mensual` futuras de `Pagos` (cuota 3, 4, 5...) y
-   en qué día del mes — n8n con un cron, o se generan todas de una vez al
-   confirmar Pago 2?
+6. ~~¿Quién genera las filas `Mensual` futuras de `Pagos`?~~ — **aclarado en
+   parte**: Juanfra confirma que al generar el enlace de Pago 2 se crea una
+   **suscripción de Stripe** de 3 meses (ver §7 nueva). Eso responde "cuándo
+   y por qué mecanismo" existen mes 2 y mes 3 — pero sigue sin cerrar cómo
+   esas cuotas (y las del ciclo natural después) llegan a filas de `Pagos`:
+   ¿un webhook de `invoice.paid` de la suscripción crea cada fila al vuelo,
+   o hace falta un paso adicional que las vuelque desde Stripe? Pregunta
+   para Juan.
 7. **Nuevo**: los tres avisos de Slack (`#montaje-campañas`: material
    completo, Pago 2 confirmado, campaña activada) — ¿quién tiene (o crea) el
    webhook/app de Slack para ese canal, y lo dispara n8n o lo dispara esta
@@ -178,7 +183,37 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    enlace a medio camino) y la (c) (otro objeto de Stripe) por complejidad
    innecesaria.
 
-## 7. Qué no se toca todavía
+## 7. Modelo de suscripción: Pago 2 → permanencia → ciclo natural
+
+Aclaración de Juanfra, importante porque cambia el mecanismo (no solo el
+cálculo, que el mockup ya tenía bien):
+
+1. **Al generarse el enlace de pago del Pago 2** no se cobra un único pago
+   suelto — se crea una **suscripción de Stripe con 3 meses de
+   permanencia**: este Pago 2 + mes 2 + mes 3, misma fecha del mes que la
+   confirmación del Pago 2 (así lo calcula ya `calcProximosCobros` en el
+   mockup).
+2. **Si el cliente decide continuar** al cumplirse los 3 meses: se prorratea
+   hasta fin de mes natural (ya calculado en el mock: `diasProrrateo`,
+   `importeProrrateo`), y la suscripción **cambia a ciclo natural**
+   (mensual).
+3. **Día de cobro en ciclo natural**: Tarjeta el **28**, SEPA el **29**
+   (corregido en el mockup — antes tenía 27 para SEPA).
+
+Esto ya estaba bien calculado en el mockup (sección "Próximos cobros",
+renombrada aquí a "Suscripción de permanencia" para que el texto no suene a
+que son fechas orientativas sueltas). Lo que cambia es que **esto debe
+construirse como una suscripción real de Stripe**, no como filas de `Pagos`
+generadas una a una por un cron o a mano.
+
+Implicación técnica a confirmar con quien construya el workflow de n8n: el
+mecanismo natural de Stripe para una suscripción con una fase de permanencia
+de N meses y un cambio automático de importe/ciclo al final es
+**Subscription Schedules** (fases) — a verificar que encaja con el resto
+del flujo (conciliar cada cobro de la suscripción contra una fila de
+`Pagos`, vía el webhook `invoice.paid`).
+
+## 8. Qué no se toca todavía
 
 - Nada en Airtable: no se crean campos, no se borran los `[OBSOLETO]`, no se
   cargan pagos de prueba en `Pagos`/`Cobros` (ambas están vacías en
@@ -186,7 +221,7 @@ Nuevas, de este cruce (actualizadas tras v1.0):
 - No se construye el workflow de n8n para Pago 2 ni la integración de Slack.
 - No se reescribe `ruta-de-arranque.html` para leer/escribir Airtable todavía.
 
-## 8. Fases propuestas (para discutir, no para arrancar solas)
+## 9. Fases propuestas (para discutir, no para arrancar solas)
 
 1. **Cerrar huecos de modelo** (§4) con Juan/Gonzalo/Micaela: dónde vive
    onboarding (carpeta/plazo/prórroga/checklist), SLA de montaje, contenido
@@ -198,16 +233,17 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    cobrar, estado de Pago 1/Pago 2 desde `Pagos`. Sin escritura todavía —
    sirve para validar que el mapeo de campos es correcto contra datos
    reales.
-4. **Construir el workflow de n8n de Pago 2 + los tres avisos de Slack**
-   (enlace Stripe con expiración de 48h → webhook → `Pagos.Estado = Pagado`
-   → Slack "a lanzar" → Slack "activada" al pulsar el botón), una vez
-   resueltas las preguntas 1–3 y 5–9.
+4. **Construir el workflow de n8n de Pago 2** (enlace Stripe con expiración
+   de 24h → al pagar, crear la suscripción de permanencia de 3 meses, §7 →
+   webhook → `Pagos.Estado = Pagado` → Slack "a lanzar" → Slack "activada"
+   al pulsar el botón), una vez resueltas las preguntas 1–3 y 5–9 y el
+   mecanismo de suscripción de §7.
 5. **Conectar escritura** desde la interfaz para los campos que de verdad
    debe tocar un humano (checklist, contenido entregado, campaña lista,
    activar campaña) — el resto lo escribe n8n/Stripe, nunca la interfaz a
    mano.
 
-## 9. Referencia rápida de IDs (de Juan)
+## 10. Referencia rápida de IDs (de Juan)
 
 - Base: `appEZnB8ZDVAcBDAV`
 - `Clientes`: `tbl6noqdseYfm4czi`

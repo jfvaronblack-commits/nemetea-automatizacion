@@ -1027,9 +1027,9 @@ function fmtDateObj(d){
 
 function calcProximosCobros(c){
   const hoy = new Date();
-  const diaCobro = c.metodoCicloNatural === "SEPA" ? 27 : 28;
+  const diaCobro = c.metodoCicloNatural === "SEPA" ? 29 : 28;
   // Mes 2 y Mes 3 caen en la misma fecha del mes que este Pago 2 — no en el
-  // día fijo de cobro (27/30), que solo rige a partir del ciclo natural.
+  // día fijo de cobro (28 tarjeta / 29 SEPA), que solo rige a partir del ciclo natural.
   const mes2 = addMonthsClampDay(hoy, 1, hoy.getDate());
   const mes3 = addMonthsClampDay(hoy, 2, hoy.getDate());
 
@@ -1055,7 +1055,7 @@ function renderProximosCobros(c){
   const conIvaTxt = (n) => conIva ? ` + IVA = ${(n * 1.21).toFixed(2)} €` : "";
   return `
     <div class="section" style="margin-top:22px; padding-top:20px;">
-      <h3>Próximos cobros (calculados desde hoy, ${fmtDateObj(new Date())})</h3>
+      <h3>Suscripción de permanencia (calculada desde hoy, ${fmtDateObj(new Date())})</h3>
       <div class="price-row">
         <div class="lbl">Mes 2 de permanencia<small>${fmtDateObj(cal.mes2)} · misma fecha que este Pago 2</small></div>
         <span class="amt">${fmtMonto(CUOTA_PERMANENCIA, c)}${conIvaTxt(CUOTA_PERMANENCIA)}</span>
@@ -1072,7 +1072,7 @@ function renderProximosCobros(c){
         <div class="lbl">Ciclo natural — si el cliente continúa<small>desde ${fmtDateObj(cal.cicloNatural)} · cobro día ${cal.diaCobro} de cada mes</small></div>
         <span class="amt">${fmtMonto(CUOTA_PERMANENCIA, c)}/mes${conIvaTxt(CUOTA_PERMANENCIA)}</span>
       </div>
-      <p class="note-hint">Fechas orientativas a partir de la confirmación de este Pago 2 — no dependen de que el cliente siga activo; si cancela antes, esos cobros no llegan a generarse.</p>
+      <p class="note-hint">Al generarse el enlace del Pago 2 se crea una suscripción de Stripe con 3 meses de permanencia (este Pago 2 + mes 2 + mes 3). Si el cliente sigue, al cumplirse la permanencia se prorratea hasta fin de mes natural y la suscripción pasa a cobrar en ciclo natural — Tarjeta el día 28, SEPA el día 29. Si cancela antes, los cobros que faltan de la suscripción no llegan a generarse.</p>
     </div>
   `;
 }
