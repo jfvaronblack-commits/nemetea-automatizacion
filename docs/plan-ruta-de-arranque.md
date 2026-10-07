@@ -198,7 +198,35 @@ documentados (§2.3, §0quater).
    cliente en la lista, hasta que Micaela abre esa ficha (clic en la
    tarjeta). Antes no había ninguna señal si ella no estaba ya mirando
    justo esa ficha cuando llegaba la confirmación.
+5. **Botón y mensaje de activación corregidos**: el botón seguía diciendo
+   "Campaña activa ✓" una vez pulsado, y el texto de ayuda daba a entender
+   que el equipo confirmaba primero y Micaela solo lo registraba después —
+   al revés de cómo es en realidad. Ahora el botón sigue diciendo "Activar
+   Campaña" (con un ✓ una vez hecho) y el texto dice "Pulsa para avisar al
+   equipo de que ya pueden activarla". El mensaje de Slack que dispara pasa
+   de una frase en pasado ("Campaña activada... ya está en marcha") a una
+   instrucción ("Activa Campaña... ya podéis activarla en redes") — es
+   Micaela quien dispara el aviso, el equipo activa después, no al revés.
 
+## 0quinquies. Nueva 4ª pestaña: "Primer mes" (08/10, ya aplicada)
+
+Tras pulsar "Activar Campaña" el cliente ya no sale del flujo — pasa a una
+**4ª pestaña nueva, "Primer mes"**, donde vive mientras dura su primer mes
+de campaña. Durante ese mes, cualquier duda o consulta del cliente la
+gestiona Micaela desde ahí, no por fuera.
+
+Misma estructura que el resto (tarjetas a la izquierda, detalle a la
+derecha), pero el detalle es casi solo un cuaderno de notas: reutiliza el
+mismo patrón de nota + historial que ya existía en Onboarding (mismo
+`c.historial` del cliente, no uno aparte — sigue siendo "un único registro
+por cliente"). Cada ficha muestra un contador de días en seguimiento (chip
+`Día X de seguimiento`, pasa a `warm` cerca del día 28). Cuando se cumple
+el mes, un botón "Cerrar seguimiento" saca al cliente de la pestaña (pasa a
+`fase: "Graduado"`, que ninguna pestaña del CRM filtra — deja de aparecer
+en cualquier lista, consistente con "lo quite de esa pestaña").
+
+No hay automatización ni integración nueva en este añadido — es una
+pestaña más de gestión manual, igual que Onboarding lo era en su momento.
 ## 1. Fuentes
 
 - **Mockup v1.0** (`ruta-de-arranque.html`, en este repo): **3 pestañas** —

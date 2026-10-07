@@ -401,12 +401,13 @@
     </div>
     <span class="mockbadge">Diseño · datos de ejemplo</span>
   </div>
-  <p class="subhead">Del pago inicial confirmado hasta el clic de "Activar Campaña". Cada cliente vive en un único registro — cambia de pestaña solo cuando cambia su fase, sin copiarlo a mano de un sitio a otro.</p>
+  <p class="subhead">Del pago inicial confirmado hasta el cierre del primer mes de campaña. Cada cliente vive en un único registro — cambia de pestaña solo cuando cambia su fase, sin copiarlo a mano de un sitio a otro.</p>
 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true" data-tab="onboarding" id="tabbtn-onboarding">Onboarding <span class="n">Micaela</span></button>
     <button class="tab" role="tab" aria-selected="false" data-tab="montaje" id="tabbtn-montaje">Montaje de campaña <span class="n">Micaela</span></button>
     <button class="tab" role="tab" aria-selected="false" data-tab="cobro" id="tabbtn-cobro">Cobro y activación <span class="n">Micaela</span><span class="notif-badge" id="cobro-badge" hidden></span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="primermes" id="tabbtn-primermes">Primer mes <span class="n">Micaela</span></button>
   </div>
 
   <!-- ============ ONBOARDING ============ -->
@@ -441,6 +442,18 @@
         <div class="list" id="cb-list"></div>
       </div>
       <div class="detail" id="cb-detail"></div>
+    </div>
+  </section>
+
+  <!-- ============ PRIMER MES ============ -->
+  <section class="view" id="view-primermes" hidden>
+    <p class="subhead" style="margin-top:-6px;">Durante el primer mes, cualquier duda o consulta del cliente la gestiona Micaela desde aquí. Cuando se cumple el mes, cierra el seguimiento y el cliente sale de esta pestaña.</p>
+    <div class="board">
+      <div>
+        <p class="panel-title">Clientes en primer mes</p>
+        <div class="list" id="pm-list"></div>
+      </div>
+      <div class="detail" id="pm-detail"></div>
     </div>
   </section>
 
@@ -605,10 +618,10 @@ Pago 2 cobrado: 298.50 €
     },
     slackActivacionEnviada: {
       when: "hace 1 día",
-      mensaje: `#montaje-campañas — Campaña activada
+      mensaje: `#montaje-campañas — Activa Campaña
 Cliente: Growshop Level Up
-Activada por Micaela el ${fmtFecha(-1)}
-→ Ya está en marcha — registrada como Activa en Airtable.`,
+Pago 2 confirmado — luz verde de Micaela el ${fmtFecha(-1)}
+→ Ya podéis activarla en redes. Se registra como Activa en Airtable.`,
     },
     whatsappClienteEnviado: {
       when: "hace 1 día",
@@ -689,7 +702,7 @@ Cliente: Barbería Norte & Cía
 Contacto: Yasmina Roldán
 Tipo de entrada: Estándar · Contact Center
 Regalo de 20 días de Contact Center: no (fuera de ventana)
-Entidad: SLU
+Entidad: SL
 Plazo de montaje: 10 días hábiles desde hoy
 Carpeta de material: [enlace a Drive]
 → Ficha completa en Airtable: [enlace a la ficha]`,
@@ -699,6 +712,30 @@ Carpeta de material: [enlace a Drive]
       { when: "hace 26 días", note: "Plazo de 21 días naturales vencido — solicita prórroga, penalización de 75 € aplicada." },
       { when: "hace 25 días", note: "Material completo confirmado dentro de la prórroga." },
       { when: "hace 9 días", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." },
+    ],
+  },
+
+  // ---- ya activada: vive en Primer mes mientras dura el acompañamiento ----
+  {
+    id: "isis",
+    empresa: "ISIS Centro de Bienestar",
+    contacto: "Lorena Mateos",
+    whatsapp: "+34 699 012 345",
+    entrada: "Estándar",
+    cc: true,
+    entidad: "SL",
+    moneda: "EUR",
+    fase: "PrimerMes",
+    primerMesInicioDay: -12,
+    activada: true,
+    historial: [
+      { when: "hace 40 días", note: "Carpeta de Drive enviada." },
+      { when: "hace 34 días", note: "Material completo confirmado — dentro de la 1ª semana, califica regalo de 20 días de Contact Center." },
+      { when: "hace 20 días", note: "Equipo avisa por Slack que la campaña está lista — Micaela lo marca en el CRM." },
+      { when: "hace 13 días", note: "Webhook de Stripe confirma el cobro del Pago 2." },
+      { when: "hace 12 días", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." },
+      { when: "hace 12 días", note: "Entra en seguimiento de Primer mes." },
+      { when: "hace 6 días", note: "Lorena pregunta cómo va el rendimiento de los anuncios — se le pasa el resumen semanal." },
     ],
   },
 ];
@@ -712,6 +749,7 @@ document.querySelectorAll(".tab").forEach(btn=>{
     document.getElementById("view-onboarding").hidden = btn.dataset.tab !== "onboarding";
     document.getElementById("view-montaje").hidden = btn.dataset.tab !== "montaje";
     document.getElementById("view-cobro").hidden = btn.dataset.tab !== "cobro";
+    document.getElementById("view-primermes").hidden = btn.dataset.tab !== "primermes";
   });
 });
 
@@ -1461,11 +1499,11 @@ function renderCbDetail(){
 
     <div class="gate">
       <div class="gate-info">${c.activada
-        ? "<b>Campaña activa.</b> Fecha de activación registrada en Airtable."
+        ? "<b>Aviso enviado.</b> Fecha de activación registrada en Airtable — el equipo de montaje la activa en redes."
         : listo
-          ? "<b>Todo listo.</b> En cuanto el equipo confirme por Slack que ya está en marcha, marca aquí la activación."
+          ? "<b>Pago confirmado.</b> Pulsa para avisar al equipo de montaje de que ya pueden activarla."
           : "Bloqueado hasta que el Pago 2 esté cobrado."}</div>
-      <button class="primary" id="cb-activate" ${listo ? "" : "disabled"}>${c.activada ? "Campaña activa ✓" : "Activar Campaña"}</button>
+      <button class="primary" id="cb-activate" ${listo ? "" : "disabled"}>${c.activada ? "Activar Campaña ✓" : "Activar Campaña"}</button>
     </div>
   `;
 
@@ -1545,12 +1583,12 @@ Pago 2 cobrado: ${fmtMonto(calcPago2(c).total, c)}
       // Este confirma que Micaela ya dio el clic de activar, no solo que se puede.
       c.slackActivacionEnviada = {
         when: fmtFecha(today),
-        mensaje: `#montaje-campañas — Campaña activada
+        mensaje: `#montaje-campañas — Activa Campaña
 Cliente: ${c.empresa}
-Activada por Micaela el ${fmtFecha(today)}
-→ Ya está en marcha — registrada como Activa en Airtable.`,
+Pago 2 confirmado — luz verde de Micaela el ${fmtFecha(today)}
+→ Ya podéis activarla en redes. Se registra como Activa en Airtable.`,
       };
-      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) confirmando que la campaña quedó activada." });
+      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) avisando al equipo que ya puede activar la campaña." });
 
       // ---- aviso al cliente por WhatsApp: su campaña ya está activa ----
       // Distinto de los avisos de Slack de arriba: ese es interno (equipo de
@@ -1566,8 +1604,113 @@ Cualquier duda, responde a este mismo WhatsApp.
       };
       c.historial.push({ when: "hoy", note: `Mensaje de WhatsApp enviado a ${c.contacto} (${c.whatsapp}) avisando de que la campaña está activa.` });
 
+      // ---- pasa a Primer mes: aquí vive el acompañamiento del cliente ----
+      c.fase = "PrimerMes";
+      c.primerMesInicioDay = today;
+      c.historial.push({ when: "hoy", note: "Entra en seguimiento de Primer mes." });
+
+      pmSelected = c.id;
       renderCbList();
       renderCbDetail();
+      renderPmList();
+      renderPmDetail();
+      document.getElementById("tabbtn-primermes").click();
+    });
+  }
+}
+
+// ---------------------------------------------------------------
+// Primer mes — tras "Activar Campaña". Durante el primer mes, cualquier
+// duda o consulta del cliente la gestiona Micaela aquí: misma estructura
+// (tarjetas a la izquierda, detalle a la derecha), pero el detalle es casi
+// solo notas de seguimiento — no hay más pasos de proceso que avanzar.
+// ---------------------------------------------------------------
+let pmSelected = (clientes.find(c=>c.fase==="PrimerMes") || {}).id;
+
+function diasPrimerMes(c){ return today - c.primerMesInicioDay; }
+function primerMesChip(c){
+  const dias = diasPrimerMes(c);
+  if (dias >= 28) return { text: `Día ${dias} · cerca del mes`, cls: "warm" };
+  return { text: `Día ${dias} de seguimiento`, cls: "ok" };
+}
+
+function renderPmList(){
+  const list = document.getElementById("pm-list");
+  list.innerHTML = "";
+  const enPrimerMes = clientes.filter(c=>c.fase==="PrimerMes");
+  if (!enPrimerMes.some(c=>c.id===pmSelected)) pmSelected = enPrimerMes[0]?.id;
+  enPrimerMes.forEach(c=>{
+    const chip = primerMesChip(c);
+    const card = document.createElement("button");
+    card.className = "card";
+    card.setAttribute("aria-current", c.id === pmSelected);
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${c.empresa}</span>
+        <span class="chip ${chip.cls}">${chip.text}</span>
+      </div>
+      <div class="card-meta"><span>${c.contacto}</span></div>
+    `;
+    card.addEventListener("click", ()=>{ pmSelected = c.id; renderPmList(); renderPmDetail(); });
+    list.appendChild(card);
+  });
+  if (!enPrimerMes.length){
+    list.innerHTML = `<p class="empty-step"><span>No hay clientes en su primer mes ahora mismo.</span></p>`;
+  }
+}
+
+function renderPmDetail(){
+  const c = clientes.find(x=>x.id===pmSelected);
+  if (!c){ document.getElementById("pm-detail").innerHTML = ""; return; }
+  const chip = primerMesChip(c);
+  const detail = document.getElementById("pm-detail");
+  detail.innerHTML = `
+    <div class="d-head">
+      <div>
+        <div class="d-name">${c.empresa}</div>
+        <div class="d-sub">${c.contacto} · campaña activada el ${fmtFecha(c.primerMesInicioDay)}</div>
+      </div>
+      <div class="d-chips">
+        <span class="chip ${chip.cls}">${chip.text}</span>
+      </div>
+    </div>
+    <div class="date-line">Primer mes de acompañamiento tras la activación — cualquier duda del cliente se gestiona aquí hasta cerrar el seguimiento.</div>
+
+    <div class="section">
+      <h3>Notas de seguimiento</h3>
+      <ul class="history">
+        ${c.historial.map(h=>`<li><time>${h.when}</time>${h.note}</li>`).join("")}
+      </ul>
+      <div class="note-form">
+        <textarea id="pm-note-input" placeholder="Anota aquí lo que has hablado o hecho con el cliente..." rows="1"></textarea>
+        <button class="ghost" id="pm-note-save">Guardar nota</button>
+      </div>
+      <p class="note-hint">Mismo historial único del cliente que ya se usaba en Onboarding — no se abre un cuaderno aparte.</p>
+    </div>
+
+    <div class="gate">
+      <div class="gate-info">Cuando se cumpla el mes y ya no haga falta seguimiento, cierra aquí — el cliente sale de esta pestaña.</div>
+      <button class="primary" id="pm-cerrar">Cerrar seguimiento</button>
+    </div>
+  `;
+
+  const noteBtn = detail.querySelector("#pm-note-save");
+  const noteInput = detail.querySelector("#pm-note-input");
+  if (noteBtn){
+    noteBtn.addEventListener("click", ()=>{
+      const texto = noteInput.value.trim();
+      if (!texto) return;
+      c.historial.push({ when: "hoy", note: texto });
+      renderPmDetail();
+    });
+  }
+  const cerrarBtn = detail.querySelector("#pm-cerrar");
+  if (cerrarBtn){
+    cerrarBtn.addEventListener("click", ()=>{
+      c.historial.push({ when: "hoy", note: `Seguimiento del primer mes cerrado por Micaela (día ${diasPrimerMes(c)}).` });
+      c.fase = "Graduado";
+      renderPmList();
+      renderPmDetail();
     });
   }
 }
@@ -1578,6 +1721,8 @@ renderMtList();
 renderMtDetail();
 renderCbList();
 renderCbDetail();
+renderPmList();
+renderPmDetail();
 </script>
 </body>
 </html>
