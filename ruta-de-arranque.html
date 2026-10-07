@@ -1027,9 +1027,9 @@ function fmtDateObj(d){
 
 function calcProximosCobros(c){
   const hoy = new Date();
-  const diaCobro = c.metodoCicloNatural === "SEPA" ? 29 : 28;
+  const diaCobro = c.metodoCicloNatural === "SEPA" ? 27 : 28;
   // Mes 2 y Mes 3 caen en la misma fecha del mes que este Pago 2 — no en el
-  // día fijo de cobro (28 tarjeta / 29 SEPA), que solo rige a partir del ciclo natural.
+  // día fijo de cobro (28 tarjeta / 27 SEPA), que solo rige a partir del ciclo natural.
   const mes2 = addMonthsClampDay(hoy, 1, hoy.getDate());
   const mes3 = addMonthsClampDay(hoy, 2, hoy.getDate());
 
@@ -1072,7 +1072,7 @@ function renderProximosCobros(c){
         <div class="lbl">Ciclo natural — si el cliente continúa<small>desde ${fmtDateObj(cal.cicloNatural)} · cobro día ${cal.diaCobro} de cada mes</small></div>
         <span class="amt">${fmtMonto(CUOTA_PERMANENCIA, c)}/mes${conIvaTxt(CUOTA_PERMANENCIA)}</span>
       </div>
-      <p class="note-hint">Al generarse el enlace del Pago 2 se crea una suscripción de Stripe con 3 meses de permanencia (este Pago 2 + mes 2 + mes 3). Si el cliente sigue, al cumplirse la permanencia se prorratea hasta fin de mes natural y la suscripción pasa a cobrar en ciclo natural — Tarjeta el día 28, SEPA el día 29. Si cancela antes, los cobros que faltan de la suscripción no llegan a generarse.</p>
+      <p class="note-hint">Al generarse el enlace del Pago 2 se crea una suscripción de Stripe con 3 meses de permanencia (este Pago 2 + mes 2 + mes 3). Si el cliente sigue, al cumplirse la permanencia se prorratea hasta fin de mes natural y la suscripción pasa a cobrar en ciclo natural — Tarjeta el día 28, SEPA el día 27. Si cancela antes, los cobros que faltan de la suscripción no llegan a generarse.</p>
     </div>
   `;
 }

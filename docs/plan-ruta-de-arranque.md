@@ -197,8 +197,10 @@ cálculo, que el mockup ya tenía bien):
    hasta fin de mes natural (ya calculado en el mock: `diasProrrateo`,
    `importeProrrateo`), y la suscripción **cambia a ciclo natural**
    (mensual).
-3. **Día de cobro en ciclo natural**: Tarjeta el **28**, SEPA el **29**
-   (corregido en el mockup — antes tenía 27 para SEPA).
+3. **Día de cobro en ciclo natural**: Tarjeta el **28**, SEPA el **27** —
+   este dato ya estaba bien en el mockup desde el principio; en el mensaje
+   anterior se mencionó por error un 29 para SEPA, ya corregido de vuelta
+   a 27.
 
 Esto ya estaba bien calculado en el mockup (sección "Próximos cobros",
 renombrada aquí a "Suscripción de permanencia" para que el texto no suene a
