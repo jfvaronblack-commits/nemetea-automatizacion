@@ -114,13 +114,14 @@ respecto a la primera pasada:
    loguearlo como nota/comentario o como fila en `Actividades`
    (`Tipo de Actividad` = "Aviso Slack montaje" / "...lanzamiento" /
    "...activación") — no necesita campos nuevos si se modela como actividad.
-6. **Caducidad de 48h del enlace de pago** — `Pagos.Enlace de pago` ya
-   existe (§3). Decidido (§6.9): la caduca el propio Stripe vía `expires_at`
-   al crear el Checkout Session, pendiente de verificar que Stripe admite
-   48h y no solo 24h. Para que el CRM muestre la fecha límite (como hace ya
-   el mockup) sigue haciendo falta guardar esa fecha en algún sitio —
-   `Pagos.Fecha último proceso` + 48h calculado al vuelo, o un campo nuevo
-   si el cálculo no es trivial en Airtable.
+6. **Caducidad del enlace de pago** — `Pagos.Enlace de pago` ya existe (§3).
+   Confirmado (§6.9): Stripe solo admite 24h de `expires_at`, no las 48h que
+   pidió la compañera — pendiente de decidir entre bajar la promesa a 24h o
+   regenerar el enlace a medio camino (ver opciones en §6.9). Sea cual sea
+   la decisión, para que el CRM muestre la fecha límite (como hace ya el
+   mockup) sigue haciendo falta guardar esa fecha en algún sitio —
+   `Pagos.Fecha último proceso` + el plazo calculado al vuelo, o un campo
+   nuevo si el cálculo no es trivial en Airtable.
 7. **Historial de comunicación por cliente** (notas tipo comentario). Puede
    mapear a comentarios nativos de Airtable sobre el registro de `Clientes`.
 
@@ -171,16 +172,22 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    esperando el aviso del equipo por Slack (como dice el mock), o hace falta
    que el propio equipo de montaje tenga algún disparador (p. ej. reaccionar
    al mensaje de Slack) en vez de depender de que Micaela lo traduzca a mano?
-9. ~~Caducidad de 48h del enlace de pago~~ — **resuelto**: Juanfra confirma
-   que la caduca la impone el propio Stripe, con `expires_at` al crear el
-   Checkout Session (no solo un aviso visual en el CRM).
-   **A verificar antes de construir el workflow de n8n**: el límite nativo
-   de Stripe para `expires_at` en un Checkout Session suele ser de máximo
-   24 horas desde la creación (no 48) — hay que confirmarlo contra la
-   documentación actual de Stripe antes de dar esto por cerrado. Si el
-   límite sigue en 24h, falta decidir: ¿se regenera el enlace a las 24h sin
-   que el cliente lo note, o se ajusta la promesa de "48 horas" a lo que
-   Stripe permite?
+9. **Conflicto confirmado, pendiente de decidir**: la caducidad la impone
+   Stripe vía `expires_at` al crear el Checkout Session — pero Juanfra
+   confirma que el límite nativo de Stripe es **24 horas**, no 48. El pedido
+   de la compañera (48h) no se puede cumplir tal cual con `expires_at`.
+   Opciones a decidir con ella, no algo que resolver en el código sin más:
+   - **(a)** Bajar la promesa a 24h — el CRM ya mostraría la fecha límite
+     real, solo cambia el número.
+   - **(b)** Mantener 48h de validez "efectiva" regenerando el enlace
+     automáticamente a las 24h (nuevo Checkout Session, mismo importe) sin
+     que el cliente note el cambio — más complejidad en el workflow de n8n
+     y dos sesiones de Stripe por envío en vez de una.
+   - **(c)** Usar un objeto distinto de Stripe (p. ej. un Payment Link en
+     vez de un Checkout Session de un solo uso) si admite una expiración
+     más larga — a confirmar si encaja con el resto del flujo (necesita
+     Checkout Session para capturar el `Stripe Checkout Session ID` que usa
+     `Pagos` para conciliar el webhook).
 
 ## 7. Qué no se toca todavía
 
