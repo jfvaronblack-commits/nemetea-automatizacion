@@ -10,6 +10,17 @@ compañera que lo validó. Este documento queda actualizado contra esa versión
 (commiteada en `ruta-de-arranque.html`); las secciones de abajo reflejan el
 estado actual, no el borrador inicial.
 
+**Segunda ronda de cambios de la compañera** (ya aplicados en el mockup):
+1. Checklist de "Material recibido" en Onboarding: se suma un 4º ítem,
+   **Fanpage**.
+2. El enlace de pago del Pago 2 ahora se muestra en el CRM (caja copiable)
+   en cuanto se envía, para poder reenviarlo a mano por WhatsApp — y caduca
+   a las **48 horas** del envío (se ve la fecha límite).
+3. Tres avisos de Slack distintos a `#montaje-campañas`, no dos:
+   material completo (ya existía) → Pago 2 cobrado, "a lanzar" (ya existía)
+   → **nuevo**: confirmación de que Micaela activó la campaña, al pulsar
+   "Activar Campaña". Este tercer aviso es nuevo en esta ronda.
+
 ## 1. Fuentes
 
 - **Mockup v1.0** (`ruta-de-arranque.html`, en este repo): **3 pestañas** —
@@ -72,6 +83,7 @@ documento.
 | Método de cobro (SEPA/Tarjeta) | `Clientes.Método de Cobro Recurrente` | Ya a nivel cliente, y el mock v1.0 ya lo trata como fijado desde el Alta — coincide. |
 | Pago 1 | `Pagos` con `Tipo = Pago 1`, `Nº de cuota = 1` | Backend ya probado según el PDF — falta confirmar si ya escribe en `Pagos` o todavía en los campos `[OBSOLETO]` de `Clientes` (pregunta abierta de Juan, ver §5). |
 | Pago 2 | `Pagos` con `Tipo = Segundo pago`, `Nº de cuota = 2` | Sin workflow n8n todavía. El webhook debe: marcar esta fila `Pagado` + disparar el Slack de "a lanzar" (nuevo en v1.0) + habilitar el botón "Activar Campaña". |
+| Enlace de pago copiable (Pago 2) | `Pagos.Enlace de pago` (`fld64ioSvid9yoLur`, url) | Ya existe en el esquema de Juan, descrito literalmente como "fallback para copiar y mandar a mano" — encaja con el pedido de la compañera. Falta la **caducidad de 48h**, que no tiene campo propio (§4). |
 | Activar Campaña | `Campañas.Fecha de Activación` + `Campañas.Estado de la Campaña` | Ya existen — no hace falta modelar nada nuevo para esto. |
 | Ajustes del Pago 2 (regalo CC, penalización, montaje, ajuste manual) | `Pagos.Concepto de ajuste` (select: Beneficio contact center / Penalización ampliación de plazo / Descuento comercial / Descuento referidos / Otro) + `Pagos.Importe ajuste` | El mock tiene 4 toggles independientes; Airtable modela **un** concepto de ajuste por fila. Si Pago 2 necesita varios ajustes a la vez (CC + penalización, p.ej.) hace falta más de una fila de `Pagos` tipo `Extra`, o ampliar el select. Pendiente de decidir (§5.6). |
 | Checklist "Primeros Pasos" | `Clientes.Primeros Pasos` / `Respuestas Primeros Pasos` | Existe tabla de respuestas — falta ver si cubre fotos/vídeos o solo el formulario. |
@@ -87,19 +99,26 @@ respecto a la primera pasada:
    `Clientes`, o eventos en `Actividades` (ya existe, con
    `Fecha de Ejecución`, `Resultado de la Actividad`, `Tipo de Actividad`).
    `Actividades` parece más coherente con el resto del esquema.
-2. **Checklist de material** (fotos / vídeos / formulario) con estado por
-   ítem — a confirmar si `Respuestas Primeros Pasos` ya lo cubre.
+2. **Checklist de material** (fotos / vídeos / formulario / **Fanpage**, 4
+   ítems ahora) con estado por ítem — a confirmar si `Respuestas Primeros
+   Pasos` ya lo cubre.
 3. **SLA de 10 días hábiles de montaje** (día X/10, calculado desde
    "material completo"). Depende del punto 1 (fecha de origen) más lógica de
    días hábiles — no existe como fórmula hoy.
 4. **Contenido entregado + canal de entrega** (el toggle y el `canal` del
    panel de Montaje). No hay campo hoy para esto.
-5. **Registro de los dos avisos de Slack** (mensaje + fecha de envío, los
-   dos `slackMontajeEnviado` / `slackLanzamientoEnviado` del mock). Puede
-   bastar con loguearlo como nota/comentario o como fila en `Actividades`
-   (`Tipo de Actividad` = "Aviso Slack montaje" / "Aviso Slack lanzamiento")
-   — no necesita campos nuevos si se modela como actividad.
-6. **Historial de comunicación por cliente** (notas tipo comentario). Puede
+5. **Registro de los tres avisos de Slack** (mensaje + fecha de envío:
+   `slackMontajeEnviado` al marcar material completo,
+   `slackLanzamientoEnviado` al confirmarse el Pago 2, y el nuevo
+   `slackActivacionEnviada` al pulsar "Activar Campaña"). Puede bastar con
+   loguearlo como nota/comentario o como fila en `Actividades`
+   (`Tipo de Actividad` = "Aviso Slack montaje" / "...lanzamiento" /
+   "...activación") — no necesita campos nuevos si se modela como actividad.
+6. **Caducidad de 48h del enlace de pago** — `Pagos.Enlace de pago` ya
+   existe (§3), pero no hay campo que marque cuándo caduca. Puede resolverse
+   sin campo nuevo si se calcula desde `Fecha último proceso` + 48h en n8n o
+   en una fórmula, pero conviene decidirlo explícitamente.
+7. **Historial de comunicación por cliente** (notas tipo comentario). Puede
    mapear a comentarios nativos de Airtable sobre el registro de `Clientes`.
 
 Ya **no** hace falta modelar (resuelto por el cambio de la compañera,
@@ -139,15 +158,20 @@ Nuevas, de este cruce (actualizadas tras v1.0):
 6. ¿Quién genera las filas `Mensual` futuras de `Pagos` (cuota 3, 4, 5...) y
    en qué día del mes — n8n con un cron, o se generan todas de una vez al
    confirmar Pago 2?
-7. **Nuevo**: los dos avisos de Slack (`#montaje-campañas`) — ¿quién tiene
-   (o crea) el webhook/app de Slack para ese canal, y lo dispara n8n o lo
-   dispara esta interfaz directamente? ¿Hace falta guardar el mensaje enviado
-   en Airtable (como actividad) o basta con que quede en Slack?
+7. **Nuevo**: los tres avisos de Slack (`#montaje-campañas`: material
+   completo, Pago 2 confirmado, campaña activada) — ¿quién tiene (o crea) el
+   webhook/app de Slack para ese canal, y lo dispara n8n o lo dispara esta
+   interfaz directamente? ¿Hace falta guardar el mensaje enviado en Airtable
+   (como actividad) o basta con que quede en Slack?
 8. **Nuevo**: con el panel de Montaje reducido a "Contenido entregado" +
    "Campaña lista →", ¿quién marca ese botón en la práctica — Micaela
    esperando el aviso del equipo por Slack (como dice el mock), o hace falta
    que el propio equipo de montaje tenga algún disparador (p. ej. reaccionar
    al mensaje de Slack) en vez de depender de que Micaela lo traduzca a mano?
+9. **Nuevo**: la caducidad de 48h del enlace de pago — ¿la hace cumplir
+   Stripe (configurando el Checkout Session con expiración) o solo es una
+   referencia visual en el CRM? Si es Stripe quien expira el enlace, hay que
+   generar uno nuevo automáticamente o avisar a Micaela para que lo reenvíe.
 
 ## 7. Qué no se toca todavía
 
@@ -169,9 +193,10 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    cobrar, estado de Pago 1/Pago 2 desde `Pagos`. Sin escritura todavía —
    sirve para validar que el mapeo de campos es correcto contra datos
    reales.
-4. **Construir el workflow de n8n de Pago 2 + los dos avisos de Slack**
-   (enlace Stripe → webhook → `Pagos.Estado = Pagado` → Slack "a lanzar"),
-   una vez resueltas las preguntas 1–3 y 5–7.
+4. **Construir el workflow de n8n de Pago 2 + los tres avisos de Slack**
+   (enlace Stripe con expiración de 48h → webhook → `Pagos.Estado = Pagado`
+   → Slack "a lanzar" → Slack "activada" al pulsar el botón), una vez
+   resueltas las preguntas 1–3 y 5–9.
 5. **Conectar escritura** desde la interfaz para los campos que de verdad
    debe tocar un humano (checklist, contenido entregado, campaña lista,
    activar campaña) — el resto lo escribe n8n/Stripe, nunca la interfaz a

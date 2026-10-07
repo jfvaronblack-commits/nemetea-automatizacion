@@ -312,6 +312,23 @@
     border:1px solid var(--line); border-radius:6px; padding:5px 8px; background:var(--paper); color:var(--ink);
   }
 
+  .link-copy-row{
+    display:flex; align-items:center; gap:8px; margin-top:12px;
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:9px;
+    padding:9px 9px 9px 12px;
+  }
+  .link-copy-row input{
+    flex:1; min-width:0; font-family:"IBM Plex Mono"; font-size:0.8rem; color:var(--ink-dim);
+    border:none; background:none; padding:0;
+  }
+  .link-copy-row input:focus-visible{ outline:none; }
+  .link-copy-row button{
+    font-family:"IBM Plex Sans"; font-weight:500; font-size:0.8rem;
+    background:var(--accent-soft); color:var(--accent); border:none;
+    border-radius:6px; padding:7px 12px; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  }
+  .link-expiry{ font-size:0.78rem; color:var(--warm); margin-top:8px; }
+
   /* activation footer */
   .gate{
     margin-top:26px; padding-top:22px; border-top:1px solid var(--line);
@@ -424,6 +441,7 @@ const clientes = [
       { label: "Formulario Primeros Pasos", done: false },
       { label: "Fotos del local / producto", done: false },
       { label: "Vídeos sin editar", done: false },
+      { label: "Fanpage", done: false },
     ],
     historial: [
       { when: "hoy", note: "Pago 1 confirmado. Pendiente de enviar la carpeta de Drive para arrancar el plazo." },
@@ -443,6 +461,7 @@ const clientes = [
       { label: "Formulario Primeros Pasos", done: true },
       { label: "Fotos del local / producto", done: false },
       { label: "Vídeos sin editar", done: false },
+      { label: "Fanpage", done: false },
     ],
     historial: [
       { when: "hace 4 días", note: "Carpeta de Drive enviada. Recordatorio automático día 1 enviado por WhatsApp." },
@@ -463,6 +482,7 @@ const clientes = [
       { label: "Formulario Primeros Pasos", done: false },
       { label: "Fotos del local / producto", done: false },
       { label: "Vídeos sin editar", done: false },
+      { label: "Fanpage", done: false },
     ],
     historial: [
       { when: "hace 19 días", note: "Carpeta enviada tras confirmar Pago 1." },
@@ -483,6 +503,7 @@ const clientes = [
       { label: "Formulario Primeros Pasos", done: true },
       { label: "Fotos del local / producto", done: true },
       { label: "Vídeos sin editar", done: false },
+      { label: "Fanpage", done: false },
     ],
     historial: [
       { when: "hace 9 días", note: "Fotos recibidas en Drive, buena calidad." },
@@ -503,6 +524,7 @@ const clientes = [
       { label: "Formulario Primeros Pasos", done: true },
       { label: "Fotos del local / producto", done: true },
       { label: "Vídeos sin editar", done: false },
+      { label: "Fanpage", done: false },
     ],
     historial: [
       { when: "hace 8 días", note: "Plazo de 21 días naturales vencido sin material completo." },
@@ -518,18 +540,21 @@ const clientes = [
     entrada: "Estándar",
     cc: true,
     entidad: "SLU",
-    fase: "Cobro",   // equipo ya avisó "campaña lista" — Pago 2 ya cobrado y activación pendiente
+    fase: "Cobro",   // equipo ya avisó "campaña lista" — Pago 2 cobrado y campaña ya activada
     pago1Day: -22,
     carpetaEnviadaDay: -20,
     materialCompletoDay: -14,   // entregó al día 6 desde la carpeta
     prorroga: false,
     pago2: "Cobrado",
+    pago2Link: "https://checkout.stripe.com/c/pay/levelup-pago2-k3f8a1",
+    pago2LinkEnviadoDay: -3,
     canal: "Email",
     metodoCicloNatural: "SEPA",
     pago2Toggles: { cc: true, regaloCC: true, montaje: false, penalizacion: false, ajuste: 0 },
     contenidoEnviado: true,
     slaDiasHabiles: 8,
     slaTotal: 10,
+    activada: true,
     slackLanzamientoEnviado: {
       when: "hace 2 días",
       mensaje: `#montaje-campañas — Pago 2 confirmado, a lanzar
@@ -537,12 +562,21 @@ Cliente: Growshop Level Up
 Pago 2 cobrado: 298.50 €
 → Podéis activar la campaña cuando esté lista.`,
     },
+    slackActivacionEnviada: {
+      when: "hace 1 día",
+      mensaje: `#montaje-campañas — Campaña activada
+Cliente: Growshop Level Up
+Activada por Micaela el ${fmtFecha(-1)}
+→ Ya está en marcha — registrada como Activa en Airtable.`,
+    },
     historial: [
       { when: "hace 20 días", note: "Carpeta de Drive enviada." },
       { when: "hace 14 días", note: "Material completo confirmado por Gisela — dentro de la 1ª semana, califica regalo de 20 días de Contact Center." },
       { when: "hace 14 días", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." },
       { when: "hace 3 días", note: "Equipo avisa por Slack que la campaña está lista — Micaela lo marca en el CRM." },
+      { when: "hace 3 días", note: "Enlace de Stripe del Pago 2 (298.50 €) enviado por Email — válido 48 horas, también copiable para mandar por WhatsApp." },
       { when: "hace 2 días", note: "Webhook de Stripe confirma el cobro del Pago 2 (298.50 €)." },
+      { when: "hace 1 día", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." },
     ],
   },
   {
@@ -558,6 +592,8 @@ Pago 2 cobrado: 298.50 €
     materialCompletoDay: -8,   // entregó al día 10 — dentro de plazo, fuera de la ventana de 7 días
     prorroga: false,
     pago2: "Enviado",
+    pago2Link: "https://checkout.stripe.com/c/pay/zen-pago2-9m2qlt",
+    pago2LinkEnviadoDay: -1,
     canal: "Email",
     metodoCicloNatural: "Tarjeta",
     pago2Toggles: { cc: true, regaloCC: false, montaje: true, penalizacion: false, ajuste: 0 },
@@ -1071,6 +1107,17 @@ function renderCobroPago2Block(c){
     ? `<div class="status">Enviado — esperando confirmación de Stripe</div>`
     : `<div class="status">Listo para enviar</div>`;
 
+  // El enlace se genera al pulsar "Enviar" y caduca a las 48h — se deja
+  // visible y copiable aquí para poder mandarlo también a mano por WhatsApp,
+  // no solo por el email/WhatsApp automático.
+  const linkBlock = (esperandoWebhook && c.pago2Link) ? `
+    <div class="link-copy-row">
+      <input type="text" readonly value="${c.pago2Link}" id="cb-link-input" onclick="this.select()">
+      <button type="button" id="cb-copy-link">Copiar</button>
+    </div>
+    <div class="link-expiry">Caduca a las 48 horas de enviarse — válido hasta <b class="num">${fmtFecha(c.pago2LinkEnviadoDay + 2)}</b>. Pasado ese plazo hay que generar uno nuevo.</div>
+  ` : "";
+
   return `
     <div class="stripe-card">
       <div class="stripe-card-head">
@@ -1082,6 +1129,7 @@ function renderCobroPago2Block(c){
       <div class="amount-line">Pago 2 — resto cuota + excepcionalidades: <b>${fmtMonto(calc.total, c)}</b>${conIva ? ` + IVA = <b>${totalConIva.toFixed(2)} €</b>` : ""}</div>
       <div class="method-line">Método: ${metodoTxt} — establece el mandato/tarjeta que se reutiliza en mes 2, mes 3 y el ciclo natural</div>
       <div class="stripe-hint">Se envía por email/WhatsApp al contacto principal. Nadie avanza a "Activar Campaña" hasta comprobar que el cobro se ha confirmado de verdad — no basta con que el cliente diga que ya pagó.</div>
+      ${linkBlock}
       ${esperandoWebhook ? `<div class="empty-step" style="margin-top:12px;"><p style="max-width:none;">Solo para esta demo — en producción lo dispara el webhook de Stripe, no un botón:</p><button class="ghost" id="cb-simulate-webhook">Simular webhook: cobro confirmado</button></div>` : ""}
     </div>`;
 }
@@ -1282,6 +1330,14 @@ function renderCbDetail(){
       <p class="note-hint">El equipo lanza la campaña por su cuenta (Ads, landing…). El botón de abajo solo registra en Airtable que ya está en marcha.</p>
     </div>` : ""}
 
+    ${c.slackActivacionEnviada ? `
+    <div class="section">
+      <h3>Aviso de activación</h3>
+      <div class="slack-box-head">✓ Enviado por Slack el ${c.slackActivacionEnviada.when}</div>
+      <div class="slack-box">${c.slackActivacionEnviada.mensaje}</div>
+      <p class="note-hint">Confirma al equipo de montaje que Micaela ya dio el clic de activar — distinto del aviso de lanzamiento, que solo decía que podían hacerlo.</p>
+    </div>` : ""}
+
     <div class="gate">
       <div class="gate-info">${c.activada
         ? "<b>Campaña activa.</b> Fecha de activación registrada en Airtable."
@@ -1309,10 +1365,24 @@ function renderCbDetail(){
   if (sendStripeBtn){
     sendStripeBtn.addEventListener("click", ()=>{
       c.pago2 = "Enviado";
+      // enlace de ejemplo — en producción lo devuelve la sesión de Stripe Checkout
+      c.pago2Link = `https://checkout.stripe.com/c/pay/${c.id}-pago2-${Date.now().toString(36)}`;
+      c.pago2LinkEnviadoDay = today;
       c.historial = c.historial || [];
-      c.historial.push({ when: "hoy", note: `Enlace de Stripe del Pago 2 (${fmtMonto(calcPago2(c).total, c)}) enviado por ${c.canal}.` });
+      c.historial.push({ when: "hoy", note: `Enlace de Stripe del Pago 2 (${fmtMonto(calcPago2(c).total, c)}) enviado por ${c.canal} — válido 48 horas, también copiable para mandar por WhatsApp.` });
       renderCbList();
       renderCbDetail();
+    });
+  }
+  const copyLinkBtn = detail.querySelector("#cb-copy-link");
+  if (copyLinkBtn){
+    copyLinkBtn.addEventListener("click", ()=>{
+      const input = detail.querySelector("#cb-link-input");
+      input.select();
+      navigator.clipboard?.writeText(input.value).catch(()=>{});
+      const original = copyLinkBtn.textContent;
+      copyLinkBtn.textContent = "Copiado ✓";
+      setTimeout(()=>{ copyLinkBtn.textContent = original; }, 1500);
     });
   }
   const webhookBtn = detail.querySelector("#cb-simulate-webhook");
@@ -1344,6 +1414,19 @@ Pago 2 cobrado: ${fmtMonto(calcPago2(c).total, c)}
       c.activada = true;
       c.historial = c.historial || [];
       c.historial.push({ when: "hoy", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." });
+
+      // ---- aviso a Montaje: confirmación de activación ----
+      // Tercer mensaje del flujo: distinto del de "Pago 2 confirmado, a lanzar".
+      // Este confirma que Micaela ya dio el clic de activar, no solo que se puede.
+      c.slackActivacionEnviada = {
+        when: fmtFecha(today),
+        mensaje: `#montaje-campañas — Campaña activada
+Cliente: ${c.empresa}
+Activada por Micaela el ${fmtFecha(today)}
+→ Ya está en marcha — registrada como Activa en Airtable.`,
+      };
+      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) confirmando que la campaña quedó activada." });
+
       renderCbList();
       renderCbDetail();
     });
