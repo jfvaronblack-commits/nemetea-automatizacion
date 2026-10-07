@@ -523,9 +523,16 @@ Puede avanzar en paralelo al Paso 3, no lo bloquea — afecta a Onboarding/
 Montaje, no a Pago 1/Pago 2.
 
 **Paso 3 — construir la base sobre la que escribe Pago 2.**
-3a. Añadir a "Alta Cliente - Guardar Datos" (o un paso justo después) la
-    creación del registro de `Cobros` del cliente — hoy no existe, y Pago 2
-    necesita que exista antes de poder escribir una fila en `Pagos`.
+3a. ~~Añadir a "Alta Cliente - Guardar Datos" la creación del registro de
+    `Cobros` del cliente~~ — **hecho (08/10), en borrador sin publicar**.
+    Nodo nuevo `HTTP Crear Cobros Airtable` en paralelo (fan-out) tras crear
+    el Cliente — no toca ni altera la respuesta existente, que ya procesó
+    clientes reales. Crea el `Cobros` enlazado por `Cliente`. Si falla,
+    avisa por Slack (`Slack - Aviso Error Crear Cobros`, canal `systems`)
+    con la empresa y el `record_id`, para crearlo a mano. **Pendiente**:
+    Juanfra asigna a mano la credencial de Airtable al nodo nuevo (no se
+    puede por API en este tipo de nodo — limitación de la herramienta, no
+    del nodo) y publica el cambio cuando lo revise en el canvas.
 3b. Migrar `Stripe - Enviar Enlace de Pago (Pago 1) [TEST]` y
     `Stripe - Confirmación de Pago (Webhook) [TEST]` para que escriban en
     `Pagos` (`Tipo = Pago 1`, enlazada al `Cobros` del cliente) en vez de
