@@ -328,27 +328,58 @@ workflow) — se deja anotado para quien revise seguridad, no se ha tocado.
 - No se construye el workflow de n8n para Pago 2 ni la integración de Slack.
 - No se reescribe `ruta-de-arranque.html` para leer/escribir Airtable todavía.
 
-## 9. Fases propuestas (para discutir, no para arrancar solas)
+## 9. Paso a paso (orden de dependencias, no una lista de deseos)
 
-1. **Cerrar huecos de modelo** (§4) con Juan/Gonzalo/Micaela: dónde vive
-   onboarding (carpeta/plazo/prórroga/checklist), SLA de montaje, contenido
-   entregado, y el registro de los avisos de Slack. Más corto que en la
-   primera pasada porque las tareas de montaje ya no necesitan modelo.
-2. ~~Aplicar la validación pendiente de la compañera~~ — hecho, es esta v1.0.
-3. **Conectar lectura** (mockup → Airtable real, solo lectura) para las
-   partes que ya tienen campo: identidad del cliente, moneda, total a
-   cobrar, estado de Pago 1/Pago 2 desde `Pagos`. Sin escritura todavía —
-   sirve para validar que el mapeo de campos es correcto contra datos
-   reales.
-4. **Construir el workflow de n8n de Pago 2** (enlace Stripe con expiración
-   de 24h → al pagar, crear la suscripción de permanencia de 3 meses, §7 →
-   webhook → `Pagos.Estado = Pagado` → Slack "a lanzar" → Slack "activada"
-   al pulsar el botón), una vez resueltas las preguntas 1–3 y 5–9 y el
-   mecanismo de suscripción de §7.
-5. **Conectar escritura** desde la interfaz para los campos que de verdad
-   debe tocar un humano (checklist, contenido entregado, campaña lista,
-   activar campaña) — el resto lo escribe n8n/Stripe, nunca la interfaz a
-   mano.
+Cada paso solo arranca cuando el anterior está cerrado — no se trabaja en
+paralelo en pasos que dependen uno del otro, para no construir sobre una
+decisión que puede cambiar al día siguiente.
+
+**Paso 0 — hoy, sin bloqueos.**
+Validación de lectura: conectar el mockup en modo solo lectura contra
+Airtable real (identidad del cliente, `Moneda`, `Total a Cobrar (EUR)
+(calc)`, `Estado del Pago 1`) para confirmar que el mapeo de campos que
+hemos supuesto es correcto contra clientes reales. Sin escribir nada. Sirve
+también para traer al sync cualquier sorpresa de última hora. (Antes era
+"fase 3" — se adelanta porque no depende de nada que falte por decidir.)
+
+**Paso 1 — sync con Juan (mañana, 08/10).**
+Resolver el punch list completo de §0 (9 puntos). Es la puerta de entrada a
+todo lo que sigue — nada del resto se construye antes de esto porque
+cambiaría de base en cuanto haya respuesta.
+
+**Paso 2 — cerrar el modelo de datos que falta.**
+Con las respuestas del sync: dónde vive onboarding/SLA (`Actividades` +
+nuevos `Tipos de Actividad`, según §10.1, o lo que decida Juan/Gonzalo/
+Micaela), y cómo se modelan los 4 ajustes del Pago 2 en un único
+`Concepto de ajuste` por fila de `Pagos` (§6.5/§6.8). Sin este paso cerrado,
+cualquier workflow que se construya después no sabe dónde escribir.
+
+**Paso 3 — resolver la base sobre la que escribe Pago 2.**
+Decidir el destino de Pago 1 (¿migra ya a `Pagos`, o convive un tiempo con
+los campos `[OBSOLETO]` mientras dura la regla de "2 semanas sin
+incidencias", §10.2?) y quién crea el registro de `Cobros` por cliente
+(§6.2). Pago 2 necesita que exista `Cobros` y que `Pagos` sea el sitio
+donde ya se escribe de verdad — construir Pago 2 antes de esto es
+construir sobre una base que todavía no existe.
+
+**Paso 4 — construir el workflow nuevo de n8n para Pago 2.**
+Sobre Airtable, portando (no copiando) la lógica ya probada del pipeline
+legacy (§7.1): cálculo del prorrateo, parámetros de la suscripción bridge,
+doble facturación Stripe+Holded, día 27 SEPA/28 Tarjeta. Incluye el enlace
+de pago copiable con expiración de 24h y el webhook que marca
+`Pagos.Estado = Pagado`.
+
+**Paso 5 — conectar escritura desde la interfaz.**
+Solo para lo que de verdad debe tocar un humano: checklist, contenido
+entregado, "Campaña lista →", "Activar Campaña". Todo lo demás (estado de
+pago, fechas de cobro, suscripciones) lo escribe n8n/Stripe, nunca la
+interfaz a mano. Este paso va último porque necesita que los pasos 2–4 ya
+estén escribiendo datos reales para conectar contra algo.
+
+**Paso 6 — periodo de prueba en paralelo.**
+Mínimo dos semanas de Ruta de Arranque + Pago 2 nuevo corriendo sin
+incidencias junto al sistema legacy, antes de plantear retirar los
+workflows 1–9 (regla de gobierno de Juan, §10.2).
 
 ## 10. Lo relevante del documento maestro de Notion (Juan)
 
