@@ -41,6 +41,48 @@ abajo:
    legacy en paralelo mientras se prueban los nuevos sobre Airtable), o es
    solo para las tablas base de Airtable/Sheets? (§10.2)
 
+## 0bis. Paso 0 — validación de lectura contra Airtable real (hecho)
+
+Se consultaron registros reales de `Clientes` (118 en total) y el esquema
+completo de la tabla para contrastar los supuestos del mockup. Resultado:
+las fórmulas de dinero están bien entendidas, pero el mockup usa etiquetas
+de entidad/moneda/tipo de entrada que **no existen** en Airtable.
+
+**Correcciones a aplicar en el mockup** (pendiente de hacer, no hechas
+todavía):
+
+1. **`Entidad Contratante` no tiene "SLU".** Opciones reales: `SL`, `SL
+   Canarias`, `Autónomo Eduardo`, `LLC`, `LLC España`, `LLC Extranjero`,
+   `Pendiente de Confirmar`. El mockup usa `"SLU"` / `"LLC"` como si fueran
+   las únicas dos — hay que usar las etiquetas reales (y el Factor Impuesto
+   real depende de cuál: 1.21 para `SL`, 1.07 para `SL Canarias` o `SL` con
+   Canarias marcado, 1.06 para `Autónomo Eduardo`, 1 para cualquier `LLC*`).
+2. **`Moneda` tiene 3 opciones, no 2**: `EUR`, `USD`, `MXN`. El mockup solo
+   calcula € o $ a partir de la entidad — no contempla MXN ni usa el campo
+   `Moneda` real para decidir (coincide con la discrepancia ya anotada en
+   §5: "Entidad vs. Moneda").
+3. **`Tipo de Entrada` tiene una 3ª opción**: `Primer mes gratis`, además de
+   `Estándar` y `Formación` (que el mockup ya tiene). No está contemplada.
+4. **`Método de Cobro Recurrente`**: `SEPA` / `Tarjeta` — coincide
+   exactamente con el mockup, sin cambios.
+5. Las fórmulas de `Total a Cobrar (EUR) (calc)` se verificaron a mano
+   contra 3 clientes LLC (Tasa Aplicada 0,859 en todos) y coinciden con la
+   documentación de Juan: `(Cuota NEMETEA + Contact Center) × (1 −
+   Descuento Referidos) × Factor Impuesto`.
+
+**Hallazgo importante, no esperado**: el campo `[OBSOLETO] Estado del
+Pago 1` **ya tiene datos reales** — 2 clientes (`Terapias Holísticas
+Verónica`, `Naiara Masajes y Bienestar`) marcados `Cobrado` el 05/10/2026,
+hace 2 días. El flujo `Stripe - Enviar Enlace de Pago (Pago 1) [TEST]`
+(§6.1) **ya está en uso real**, a pesar del sufijo `[TEST]` en su nombre —
+no es un sandbox sin tocar. Esto refuerza la pregunta §0.1: si ya hay
+clientes reales cobrados por ahí, probablemente esa es hoy la
+implementación autoritativa de Pago 1, no la legacy de Sheets — a
+confirmar con Juanfra/Juan, no asumirlo.
+
+`Cobros` sigue vacía (confirmado, ningún cliente de la muestra tiene el
+link poblado) — coincide con lo que dice el maestro de Notion.
+
 **Changelog**: v1.0 del mockup ya incorpora los cambios que pidió la
 compañera que lo validó. Este documento queda actualizado contra esa versión
 (commiteada en `ruta-de-arranque.html`); las secciones de abajo reflejan el
