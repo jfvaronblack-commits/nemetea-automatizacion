@@ -574,7 +574,7 @@ Activada por Micaela el ${fmtFecha(-1)}
       { when: "hace 14 días", note: "Material completo confirmado por Gisela — dentro de la 1ª semana, califica regalo de 20 días de Contact Center." },
       { when: "hace 14 días", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el material está completo." },
       { when: "hace 3 días", note: "Equipo avisa por Slack que la campaña está lista — Micaela lo marca en el CRM." },
-      { when: "hace 3 días", note: "Enlace de Stripe del Pago 2 (298.50 €) enviado por Email — válido 48 horas, también copiable para mandar por WhatsApp." },
+      { when: "hace 3 días", note: "Enlace de Stripe del Pago 2 (298.50 €) enviado por Email — válido 24 horas, también copiable para mandar por WhatsApp." },
       { when: "hace 2 días", note: "Webhook de Stripe confirma el cobro del Pago 2 (298.50 €)." },
       { when: "hace 1 día", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." },
     ],
@@ -1107,7 +1107,8 @@ function renderCobroPago2Block(c){
     ? `<div class="status">Enviado — esperando confirmación de Stripe</div>`
     : `<div class="status">Listo para enviar</div>`;
 
-  // El enlace se genera al pulsar "Enviar" y caduca a las 48h — se deja
+  // El enlace se genera al pulsar "Enviar" y caduca a las 24h (límite nativo
+  // de Stripe para expires_at en un Checkout Session) — se deja
   // visible y copiable aquí para poder mandarlo también a mano por WhatsApp,
   // no solo por el email/WhatsApp automático.
   const linkBlock = (esperandoWebhook && c.pago2Link) ? `
@@ -1115,7 +1116,7 @@ function renderCobroPago2Block(c){
       <input type="text" readonly value="${c.pago2Link}" id="cb-link-input" onclick="this.select()">
       <button type="button" id="cb-copy-link">Copiar</button>
     </div>
-    <div class="link-expiry">Caduca a las 48 horas de enviarse — válido hasta <b class="num">${fmtFecha(c.pago2LinkEnviadoDay + 2)}</b>. Pasado ese plazo hay que generar uno nuevo.</div>
+    <div class="link-expiry">Caduca a las 24 horas de enviarse (límite de Stripe para el enlace) — válido hasta <b class="num">${fmtFecha(c.pago2LinkEnviadoDay + 1)}</b>. Pasado ese plazo hay que generar uno nuevo.</div>
   ` : "";
 
   return `
@@ -1369,7 +1370,7 @@ function renderCbDetail(){
       c.pago2Link = `https://checkout.stripe.com/c/pay/${c.id}-pago2-${Date.now().toString(36)}`;
       c.pago2LinkEnviadoDay = today;
       c.historial = c.historial || [];
-      c.historial.push({ when: "hoy", note: `Enlace de Stripe del Pago 2 (${fmtMonto(calcPago2(c).total, c)}) enviado por ${c.canal} — válido 48 horas, también copiable para mandar por WhatsApp.` });
+      c.historial.push({ when: "hoy", note: `Enlace de Stripe del Pago 2 (${fmtMonto(calcPago2(c).total, c)}) enviado por ${c.canal} — válido 24 horas, también copiable para mandar por WhatsApp.` });
       renderCbList();
       renderCbDetail();
     });
