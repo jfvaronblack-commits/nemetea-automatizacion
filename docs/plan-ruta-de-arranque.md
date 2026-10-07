@@ -115,9 +115,12 @@ respecto a la primera pasada:
    (`Tipo de Actividad` = "Aviso Slack montaje" / "...lanzamiento" /
    "...activación") — no necesita campos nuevos si se modela como actividad.
 6. **Caducidad de 48h del enlace de pago** — `Pagos.Enlace de pago` ya
-   existe (§3), pero no hay campo que marque cuándo caduca. Puede resolverse
-   sin campo nuevo si se calcula desde `Fecha último proceso` + 48h en n8n o
-   en una fórmula, pero conviene decidirlo explícitamente.
+   existe (§3). Decidido (§6.9): la caduca el propio Stripe vía `expires_at`
+   al crear el Checkout Session, pendiente de verificar que Stripe admite
+   48h y no solo 24h. Para que el CRM muestre la fecha límite (como hace ya
+   el mockup) sigue haciendo falta guardar esa fecha en algún sitio —
+   `Pagos.Fecha último proceso` + 48h calculado al vuelo, o un campo nuevo
+   si el cálculo no es trivial en Airtable.
 7. **Historial de comunicación por cliente** (notas tipo comentario). Puede
    mapear a comentarios nativos de Airtable sobre el registro de `Clientes`.
 
@@ -168,10 +171,16 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    esperando el aviso del equipo por Slack (como dice el mock), o hace falta
    que el propio equipo de montaje tenga algún disparador (p. ej. reaccionar
    al mensaje de Slack) en vez de depender de que Micaela lo traduzca a mano?
-9. **Nuevo**: la caducidad de 48h del enlace de pago — ¿la hace cumplir
-   Stripe (configurando el Checkout Session con expiración) o solo es una
-   referencia visual en el CRM? Si es Stripe quien expira el enlace, hay que
-   generar uno nuevo automáticamente o avisar a Micaela para que lo reenvíe.
+9. ~~Caducidad de 48h del enlace de pago~~ — **resuelto**: Juanfra confirma
+   que la caduca la impone el propio Stripe, con `expires_at` al crear el
+   Checkout Session (no solo un aviso visual en el CRM).
+   **A verificar antes de construir el workflow de n8n**: el límite nativo
+   de Stripe para `expires_at` en un Checkout Session suele ser de máximo
+   24 horas desde la creación (no 48) — hay que confirmarlo contra la
+   documentación actual de Stripe antes de dar esto por cerrado. Si el
+   límite sigue en 24h, falta decidir: ¿se regenera el enlace a las 24h sin
+   que el cliente lo note, o se ajusta la promesa de "48 horas" a lo que
+   Stripe permite?
 
 ## 7. Qué no se toca todavía
 
