@@ -348,16 +348,16 @@ ver §2.3): tareas de montaje con responsable/estado/link, ni tabla de
 ## 6. Preguntas abiertas (combinando las de Juan + nuevas del cruce)
 
 De Juan (su doc, §11, sin resolver aún):
-1. ¿Dónde escribe hoy el flujo de Pago 1 y cuándo lo migra a `Pagos`? —
-   **verificado en n8n, sigue sin resolver del todo**: hay dos
-   implementaciones en paralelo. La legacy (`1. SLU Initial payment`, serie
-   1–9) escribe en Google Sheets + Holded. La nueva en pruebas (`Stripe -
-   Enviar Enlace de Pago (Pago 1) [TEST]`) escribe en los campos
-   `[OBSOLETO]` de `Clientes` en Airtable (`Estado del Pago 1`, `Fecha de
-   Pago 1`, `Stripe Checkout Session ID (Pago 1)`) — todavía no en `Pagos`.
-   Falta saber cuál de las dos es la autoritativa hoy (ver §7.2).
-2. ¿Quién crea el registro de `Cobros` por cliente — el flujo al firmar
-   contrato, o el script de carga de Juan?
+1. ~~¿Dónde escribe hoy el flujo de Pago 1 y cuándo lo migra a `Pagos`?~~ —
+   **decidido por Juanfra (08/10)**: el nuevo flujo `[TEST]` sobre Airtable
+   es el autoritativo (ya tiene 2 clientes reales cobrados) — el legacy
+   sobre Sheets se da por reemplazado. Falta migrar ese flujo para que
+   escriba en `Pagos`/`Cobros` en vez de los campos `[OBSOLETO]` de
+   `Clientes` — es la primera pieza de construcción (§9bis).
+2. ~~¿Quién crea el registro de `Cobros` por cliente?~~ — **decidido por
+   Juanfra (08/10)**: en un paso aparte, al dar de alta al cliente — no
+   como parte del flujo de Pago 1. Hoy ese paso no existe todavía (el panel
+   de alta no crea `Cobros`), hay que construirlo.
 3. ~~¿La carga histórica la hace Juanfra directo en Airtable, o Juan prepara
    un CSV con el formato de `Pagos`?~~ — **resuelto** (maestro de Notion,
    M20, 7 oct): "Sin datos de pagos cargados: la carga la hace Juanfra al
@@ -369,17 +369,13 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    necesita algo más? Quién es el dueño de esa decisión de modelado (¿Juan,
    Juanfra, o se decide junto con Gonzalo/Micaela que son quienes operan
    estas pantallas)?
-5. Los 4 ajustes del Pago 2 del mock (CC, penalización, montaje, manual)
-   ¿pueden coexistir en una misma cuota, y si sí, cómo se modela con un único
-   `Concepto de ajuste` por fila de `Pagos`?
-6. ~~¿Quién genera las filas `Mensual` futuras de `Pagos`?~~ — **aclarado en
-   parte**: Juanfra confirma que al generar el enlace de Pago 2 se crea una
-   **suscripción de Stripe** de 3 meses (ver §7 nueva). Eso responde "cuándo
-   y por qué mecanismo" existen mes 2 y mes 3 — pero sigue sin cerrar cómo
-   esas cuotas (y las del ciclo natural después) llegan a filas de `Pagos`:
-   ¿un webhook de `invoice.paid` de la suscripción crea cada fila al vuelo,
-   o hace falta un paso adicional que las vuelque desde Stripe? Pregunta
-   para Juan.
+5. ~~Los 4 ajustes del Pago 2 ¿pueden coexistir en una misma cuota?~~ —
+   **decidido por Juanfra (08/10)**: sí, coexisten — una fila de `Pagos`
+   por cada ajuste aplicado (`Tipo = Extra`, cada una con su propio
+   `Concepto de ajuste`), separada de la fila del propio Segundo pago.
+6. ~~¿Quién genera las filas `Mensual` futuras de `Pagos`?~~ — **resuelto
+   (08/10)**: un webhook de Stripe (`invoice.paid`) crea cada fila al vuelo
+   cuando se cobra — no se precrean filas "Previsto" de antemano.
 7. Los tres avisos de Slack (mockup: `#montaje-campañas` — material
    completo, Pago 2 confirmado, campaña activada) — **parcialmente
    verificado** (§7.3): ya existe un canal real `#activación-de-campaña`
@@ -462,11 +458,12 @@ del jueves, no algo que yo deba decidir:
      `cancel_at` a 2 meses del anchor, `metadata.bridge_phase`).
   3. La doble facturación Stripe + Holded (factura en Holded, marcarla
      pagada, enviarla; invoice item + invoice en Stripe).
-- El propio Pago 1 ya tiene **dos implementaciones en paralelo** ahora
-  mismo: la legacy (`1. SLU Initial payment`, sobre Sheets+Holded) y la
-  nueva en pruebas (`Stripe - Enviar Enlace de Pago (Pago 1) [TEST]`,
-  sobre Airtable, §6.1). Sigue sin resolver cuál es la autoritativa hoy —
-  pendiente de confirmar con Juanfra/Juan en el sync.
+- El propio Pago 1 tenía **dos implementaciones en paralelo**: la legacy
+  (`1. SLU Initial payment`, sobre Sheets+Holded) y la nueva en pruebas
+  (`Stripe - Enviar Enlace de Pago (Pago 1) [TEST]`, sobre Airtable).
+  **Resuelto (§6.1)**: la nueva es la autoritativa — hay que migrarla para
+  que escriba en `Pagos`/`Cobros` en vez de los campos `[OBSOLETO]` de
+  `Clientes`.
 
 ### 7.3 Otro hallazgo: el canal de Slack ya existe, y no es el que inventé
 
@@ -511,32 +508,38 @@ hemos supuesto es correcto contra clientes reales. Sin escribir nada. Sirve
 también para traer al sync cualquier sorpresa de última hora. (Antes era
 "fase 3" — se adelanta porque no depende de nada que falte por decidir.)
 
-**Paso 1 — sync con Juan (mañana, 08/10).**
-Resolver el punch list completo de §0 (9 puntos). Es la puerta de entrada a
-todo lo que sigue — nada del resto se construye antes de esto porque
-cambiaría de base en cuanto haya respuesta.
+**Paso 1 — decisiones cerradas directamente con Juanfra (08/10), sin
+esperar al sync formal con Juan.** Resueltas: Pago 1 autoritativo = el
+nuevo `[TEST]` sobre Airtable (§6.1); `Cobros` se crea al dar de alta al
+cliente, no en el flujo de Pago 1 (§6.2); los 4 ajustes del Pago 2 coexisten
+como filas `Tipo=Extra` separadas (§6.5); las cuotas recurrentes de la
+suscripción (mes 2, mes 3, ciclo natural) las crea un webhook de Stripe al
+vuelo (§6.6). Sigue pendiente de Juan/Gonzalo/Micaela: dónde vive el
+modelo de onboarding/SLA (§6.4) y el canal de Slack (§6.7) — no bloquean
+empezar el backend de Pago 1/Pago 2, que es independiente de esas dos.
 
-**Paso 2 — cerrar el modelo de datos que falta.**
-Con las respuestas del sync: dónde vive onboarding/SLA (`Actividades` +
-nuevos `Tipos de Actividad`, según §10.1, o lo que decida Juan/Gonzalo/
-Micaela), y cómo se modelan los 4 ajustes del Pago 2 en un único
-`Concepto de ajuste` por fila de `Pagos` (§6.5/§6.8). Sin este paso cerrado,
-cualquier workflow que se construya después no sabe dónde escribir.
+**Paso 2 — cerrar el modelo de datos que falta (onboarding/SLA, §6.4).**
+Puede avanzar en paralelo al Paso 3, no lo bloquea — afecta a Onboarding/
+Montaje, no a Pago 1/Pago 2.
 
-**Paso 3 — resolver la base sobre la que escribe Pago 2.**
-Decidir el destino de Pago 1 (¿migra ya a `Pagos`, o convive un tiempo con
-los campos `[OBSOLETO]` mientras dura la regla de "2 semanas sin
-incidencias", §10.2?) y quién crea el registro de `Cobros` por cliente
-(§6.2). Pago 2 necesita que exista `Cobros` y que `Pagos` sea el sitio
-donde ya se escribe de verdad — construir Pago 2 antes de esto es
-construir sobre una base que todavía no existe.
+**Paso 3 — construir la base sobre la que escribe Pago 2.**
+3a. Añadir a "Alta Cliente - Guardar Datos" (o un paso justo después) la
+    creación del registro de `Cobros` del cliente — hoy no existe, y Pago 2
+    necesita que exista antes de poder escribir una fila en `Pagos`.
+3b. Migrar `Stripe - Enviar Enlace de Pago (Pago 1) [TEST]` y
+    `Stripe - Confirmación de Pago (Webhook) [TEST]` para que escriban en
+    `Pagos` (`Tipo = Pago 1`, enlazada al `Cobros` del cliente) en vez de
+    los campos `[OBSOLETO]` de `Clientes`. Es la plantilla que después
+    reutiliza Pago 2 (mismo patrón de checkout → webhook → fila de `Pagos`).
 
 **Paso 4 — construir el workflow nuevo de n8n para Pago 2.**
 Sobre Airtable, portando (no copiando) la lógica ya probada del pipeline
 legacy (§7.1): cálculo del prorrateo, parámetros de la suscripción bridge,
 doble facturación Stripe+Holded, día 27 SEPA/28 Tarjeta. Incluye el enlace
-de pago copiable con expiración de 24h y el webhook que marca
-`Pagos.Estado = Pagado`.
+de pago copiable con expiración de 24h, el webhook que marca
+`Pagos.Estado = Pagado` (creando la fila `Tipo=Segundo pago` + una fila
+`Tipo=Extra` por cada ajuste aplicado, §6.5), y el webhook de
+`invoice.paid` que crea cada cuota recurrente al vuelo (§6.6).
 
 **Paso 5 — conectar escritura desde la interfaz.**
 Solo para lo que de verdad debe tocar un humano: checklist, contenido
