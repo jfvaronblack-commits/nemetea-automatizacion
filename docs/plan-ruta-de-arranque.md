@@ -130,6 +130,75 @@ estado actual, no el borrador inicial.
    scope hasta aprobación" — este aviso puede chocar con esa decisión de
    alcance y hay que aclararlo, no asumir que ya está disponible.
 
+## 0ter. Flujo completo, confirmado por Juanfra (08/10)
+
+Juanfra describió el flujo de punta a punta con el detalle que faltaba.
+Queda aquí como referencia — corrige algunas suposiciones del mockup y deja
+claro qué falta por construir en cada pestaña.
+
+**Onboarding**: los clientes que entran aquí son los que el closer acaba de
+cerrar en el **panel de alta de cliente** (`alta-cliente-nemetea.html`) —
+Onboarding es la continuación de ese flujo, no un punto de entrada aparte.
+Micaela necesita ver **nombre, tipo de entrada y entidad** de un vistazo en
+la lista — ya aplicado (§0quater.1). Enviar la carpeta de Drive es manual
+fuera del sistema en esta primera versión (el botón de "marcar enviada"
+sigue siendo solo eso, un registro, no un envío automático); la automatización
+real del envío es una fase posterior. Marcar la carpeta enviada arranca el
+contador de 21 días; cuando el cliente entrega todo y Micaela da el visto
+bueno, marca "Material Completo" — ahí se para el contador y el cliente
+pasa a "Montaje de campaña".
+
+**Montaje de campaña**: pantalla mayormente informativa — Micaela ve de un
+vistazo las campañas en montaje con Contact Center/bonificación/penalización
+(ya estaba). Cuando el equipo avisa (fuera del CRM) de que todo está listo,
+Micaela **le envía ella misma al cliente, por WhatsApp, la landing y el
+material** — esto antes era un toggle pasivo, ahora es una acción real que
+compone y muestra el mensaje de WhatsApp enviado (§0quater.2). Al marcar
+"Campaña lista →" pasa a la siguiente pestaña.
+
+**Cobro y activación**: Micaela tiene que ver **arriba, bien distinguible**,
+si el cliente tiene bonificación de Contact Center o alguna penalización —
+antes solo aparecía en Montaje, ahora también aquí (§0quater.3). Marca los
+toggles correspondientes, el sistema suma el total y prepara el enlace de
+Stripe — el enlace se envía al cliente por email automáticamente, y **además
+aparece en el CRM para que Micaela lo copie y lo reenvíe ella misma por
+WhatsApp** (ya estaba, §2.2). Cuando el cliente paga, el sistema tiene que:
+1. Dejar una **señal visible si Micaela no está en esa pestaña/cliente** —
+   como una notificación de WhatsApp sin leer. Era el hueco más grande:
+   antes el "Cobrado" solo se veía si ya estabas mirando esa ficha. Ahora
+   hay una burbuja numerada en la pestaña y en la ficha del cliente, que se
+   borra al abrir esa ficha (§0quater.4).
+2. Mostrar la confirmación de pago en la ficha del cliente al entrar (ya
+   estaba: la tarjeta "✓ Cobro confirmado por Stripe").
+3. Avisar por Slack al equipo de montaje (ya estaba: `slackLanzamientoEnviado`,
+   "Pago 2 confirmado, a lanzar").
+
+Con el pago confirmado, Micaela marca "Activar Campaña" y el equipo de
+montaje activa la campaña en redes — eso dispara los avisos 3 y 4 ya
+documentados (§2.3, §0quater).
+
+## 0quater. Segunda vuelta de correcciones de interfaz (08/10, ya aplicadas)
+
+1. **Onboarding**: la ficha de la lista ahora muestra `Tipo de entrada ·
+   Entidad` como línea propia, destacada, justo bajo el nombre — antes el
+   tipo de entrada estaba mezclado con el chip de Contact Center y la
+   entidad no aparecía en absoluto en la lista (solo en el detalle).
+2. **Montaje**: "Envío de contenido" deja de ser un toggle manual y pasa a
+   ser una acción real — botón "Enviar por WhatsApp →" que compone y
+   muestra el mensaje (landing + vídeos) enviado al número de WhatsApp del
+   cliente, igual que ya hacía el aviso de activación. El botón "Campaña
+   lista →" sigue bloqueado hasta que se envíe.
+3. **Cobro y activación**: los chips de bonificación de Contact Center y
+   penalización ahora se ven también arriba del todo (antes solo en
+   Montaje) — era un pedido explícito, "que se distinga bien".
+4. **Burbuja de notificación de pago confirmado** (nuevo, no existía en
+   ningún punto anterior del mockup): cuando se confirma el Pago 2 por
+   webhook, el cliente queda marcado como "sin ver" — aparece una burbuja
+   verde numerada en la pestaña "Cobro y activación" y en la ficha del
+   cliente en la lista, hasta que Micaela abre esa ficha (clic en la
+   tarjeta). Antes no había ninguna señal si ella no estaba ya mirando
+   justo esa ficha cuando llegaba la confirmación.
+
 ## 1. Fuentes
 
 - **Mockup v1.0** (`ruta-de-arranque.html`, en este repo): **3 pestañas** —

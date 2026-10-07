@@ -380,6 +380,16 @@
     :root:not([data-theme="light"]) .wa-box-head{ color:#3BBE75; }
   }
   :root[data-theme="dark"] .wa-box-head{ color:#3BBE75; }
+
+  /* ---------- burbuja de aviso (estilo WhatsApp): pago confirmado sin ver ---------- */
+  .notif-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:18px; height:18px; padding:0 5px; margin-left:6px;
+    background:#25D366; color:#fff; border-radius:999px;
+    font-family:"IBM Plex Sans"; font-weight:700; font-size:0.68rem; line-height:1;
+    vertical-align:middle;
+  }
+  .card-top .notif-badge{ margin-left:auto; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -396,7 +406,7 @@
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true" data-tab="onboarding" id="tabbtn-onboarding">Onboarding <span class="n">Micaela</span></button>
     <button class="tab" role="tab" aria-selected="false" data-tab="montaje" id="tabbtn-montaje">Montaje de campaña <span class="n">Micaela</span></button>
-    <button class="tab" role="tab" aria-selected="false" data-tab="cobro" id="tabbtn-cobro">Cobro y activación <span class="n">Micaela</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="cobro" id="tabbtn-cobro">Cobro y activación <span class="n">Micaela</span><span class="notif-badge" id="cobro-badge" hidden></span></button>
   </div>
 
   <!-- ============ ONBOARDING ============ -->
@@ -791,8 +801,10 @@ function renderObList(){
         <span class="card-name">${c.empresa}</span>
         <span class="chip ${estado.cls}">${estado.text}</span>
       </div>
+      <div class="card-meta" style="font-weight:500; color:var(--ink);">
+        <span>${c.entrada} · ${c.entidad}</span>
+      </div>
       <div class="card-meta">
-        <span>${c.entrada}</span>
         <span>${c.cc ? "Contact Center" : "Sin Contact Center"}</span>
       </div>
       <div class="card-meta"><span class="num">${carpetaTxt}</span></div>
@@ -1244,7 +1256,7 @@ function renderMtDetail(){
     <div class="d-head">
       <div>
         <div class="d-name">${c.empresa}</div>
-        <div class="d-sub">${c.contacto} · Canal de entrega: ${c.canal}</div>
+        <div class="d-sub">${c.contacto}</div>
       </div>
       <div class="d-chips">
         <span class="chip ${sla.cls}">${sla.text}</span>
@@ -1270,29 +1282,45 @@ function renderMtDetail(){
     </div>
 
     <div class="section">
-      <h3>Envío de contenido</h3>
-      <div class="price-row" style="border-bottom:none;">
-        <div class="lbl">Contenido entregado al cliente por <b>${c.canal}</b><small>enlace a la landing y los vídeos terminados</small></div>
-        <span style="width:64px;"></span>
-        <label class="switch">
-          <input type="checkbox" id="mt-contenido-toggle" ${c.contenidoEnviado ? "checked" : ""}>
-          <span class="track"></span>
-        </label>
+      <h3>Envío de contenido al cliente</h3>
+      ${c.whatsappContenidoEnviado ? `
+      <div class="wa-box-head">✓ WhatsApp enviado el ${c.whatsappContenidoEnviado.when} a ${c.whatsappContenidoEnviado.numero}</div>
+      <div class="wa-box">${c.whatsappContenidoEnviado.mensaje}</div>
+      ` : `
+      <div class="empty-step">
+        <p>Cuando el equipo de montaje avise de que la landing y los vídeos están listos, envíaselos al cliente por WhatsApp.</p>
+        <button class="ghost" id="mt-send-whatsapp">Enviar por WhatsApp →</button>
       </div>
+      `}
     </div>
 
     <div class="gate">
       <div class="gate-info">${c.contenidoEnviado
         ? "Cuando el equipo avise por Slack que la campaña está lista, márcalo aquí — el cliente pasa a «Cobro y activación»."
-        : "Marca primero que el contenido ya se entregó al cliente."}</div>
+        : "Envía primero el contenido al cliente por WhatsApp."}</div>
       <button class="primary" id="mt-campana-lista" ${c.contenidoEnviado ? "" : "disabled"}>Campaña lista →</button>
     </div>
   `;
 
-  const contenidoToggle = detail.querySelector("#mt-contenido-toggle");
-  if (contenidoToggle){
-    contenidoToggle.addEventListener("change", (e)=>{
-      c.contenidoEnviado = e.target.checked;
+  const sendWaBtn = detail.querySelector("#mt-send-whatsapp");
+  if (sendWaBtn){
+    sendWaBtn.addEventListener("click", ()=>{
+      c.contenidoEnviado = true;
+      c.whatsappContenidoEnviado = {
+        when: fmtFecha(today),
+        numero: c.whatsapp,
+        mensaje: `¡Hola ${c.contacto}! Ya tenemos lista tu campaña de ${c.empresa} 🎉
+
+Aquí tienes tu material:
+→ Landing page: [enlace a la landing]
+→ Vídeos terminados: [enlace a los vídeos]
+
+Cualquier duda, responde a este mismo WhatsApp.
+
+— Equipo Nemetea`,
+      };
+      c.historial = c.historial || [];
+      c.historial.push({ when: "hoy", note: `Contenido (landing + vídeos) enviado por WhatsApp a ${c.contacto} (${c.whatsapp}).` });
       renderMtList();
       renderMtDetail();
     });
@@ -1302,6 +1330,7 @@ function renderMtDetail(){
     listoBtn.addEventListener("click", ()=>{
       c.fase = "Cobro";
       c.pago2 = c.pago2 || "No enviado";
+      c.pago2Visto = true;
       c.pago2Toggles = c.pago2Toggles || { cc: c.cc, regaloCC: !!calificaRegaloCC(c), montaje: false, penalizacion: !!penalizacionInfo(c), ajuste: 0 };
       c.canal = c.canal || "Email";
       c.metodoCicloNatural = c.metodoCicloNatural || "SEPA";
@@ -1324,6 +1353,11 @@ function renderMtDetail(){
 // ---------------------------------------------------------------
 let cbSelected = (clientes.find(c=>c.fase==="Cobro") || {}).id;
 
+// Pago 2 confirmado y sin ver = burbuja estilo WhatsApp, en la ficha y en
+// la pestaña — para que Micaela no tenga que estar mirando este panel
+// cuando llega el webhook de Stripe, igual que una notificación de verdad.
+function pago2SinVer(c){ return c.pago2 === "Cobrado" && c.pago2Visto === false && !c.activada; }
+
 function renderCbList(){
   const list = document.getElementById("cb-list");
   list.innerHTML = "";
@@ -1331,6 +1365,8 @@ function renderCbList(){
   if (!enCobro.some(c=>c.id===cbSelected)) cbSelected = enCobro[0]?.id;
   enCobro.forEach(c=>{
     const pago2calc = calcPago2(c);
+    const regalo = regaloChip(c);
+    const penal = penalizacionChip(c);
     const card = document.createElement("button");
     card.className = "card";
     card.setAttribute("aria-current", c.id === cbSelected);
@@ -1338,25 +1374,42 @@ function renderCbList(){
       <div class="card-top">
         <span class="card-name">${c.empresa}</span>
         <span class="chip ${c.pago2 === "Cobrado" ? "ok" : c.pago2 === "Enviado" ? "warm" : "pending"}">Pago 2 · ${c.pago2}</span>
+        ${pago2SinVer(c) ? `<span class="notif-badge" title="Pago confirmado — sin ver">1</span>` : ""}
       </div>
       <div class="card-meta"><span>${c.contacto}</span></div>
+      <div class="card-meta">
+        <span class="chip ${regalo.cls}">${regalo.text}</span>
+        ${penal.text !== "Sin penalización" ? `<span class="chip ${penal.cls}">${penal.text}</span>` : ""}
+      </div>
       <div class="card-meta">
         <span class="num" style="font-size:0.78rem; color:var(--ink-dim);">Total Pago 2: <b style="color:var(--ink);">${fmtMonto(pago2calc.total, c)}</b></span>
         ${c.activada ? `<span class="chip ok">Campaña activa</span>` : ""}
       </div>
     `;
-    card.addEventListener("click", ()=>{ cbSelected = c.id; renderCbList(); renderCbDetail(); });
+    card.addEventListener("click", ()=>{
+      cbSelected = c.id;
+      c.pago2Visto = true;
+      renderCbList();
+      renderCbDetail();
+    });
     list.appendChild(card);
   });
   if (!enCobro.length){
     list.innerHTML = `<p class="empty-step"><span>Todavía no hay clientes con la campaña lista.</span></p>`;
   }
+
+  const sinVer = enCobro.filter(pago2SinVer).length;
+  const badge = document.getElementById("cobro-badge");
+  badge.hidden = sinVer === 0;
+  badge.textContent = sinVer;
 }
 
 function renderCbDetail(){
   const c = clientes.find(x=>x.id===cbSelected);
   if (!c){ document.getElementById("cb-detail").innerHTML = ""; return; }
   const listo = c.pago2 === "Cobrado" && !c.activada;
+  const regalo = regaloChip(c);
+  const penal = penalizacionChip(c);
   const detail = document.getElementById("cb-detail");
   detail.innerHTML = `
     <div class="d-head">
@@ -1368,6 +1421,10 @@ function renderCbDetail(){
         <span class="chip ${c.pago2 === "Cobrado" ? "ok" : c.pago2 === "Enviado" ? "warm" : "pending"}">Pago 2 · ${c.pago2}</span>
         ${c.activada ? `<span class="chip ok">Campaña activa</span>` : ""}
       </div>
+    </div>
+    <div class="d-chips" style="margin-top:8px;">
+      <span class="chip ${regalo.cls}">${regalo.text}</span>
+      <span class="chip ${penal.cls}">${penal.text}</span>
     </div>
     <div class="date-line">Material completo <b>${fmtFecha(c.materialCompletoDay)}</b> · campaña lista confirmada por el equipo.</div>
 
@@ -1453,6 +1510,10 @@ function renderCbDetail(){
   if (webhookBtn){
     webhookBtn.addEventListener("click", ()=>{
       c.pago2 = "Cobrado";
+      // Burbuja de aviso (estilo WhatsApp) hasta que Micaela entre a verlo —
+      // en producción esto llega por webhook de Stripe en cualquier momento,
+      // no solo cuando ella está mirando precisamente a este cliente.
+      c.pago2Visto = false;
       c.historial = c.historial || [];
       c.historial.push({ when: "hoy", note: `Webhook de Stripe confirma el cobro del Pago 2 (${fmtMonto(calcPago2(c).total, c)}).` });
 
