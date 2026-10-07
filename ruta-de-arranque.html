@@ -361,6 +361,25 @@
     font-family:"IBM Plex Sans"; font-weight:600; font-size:0.82rem; color:var(--accent);
     margin-bottom:6px;
   }
+
+  /* ---------- aviso de WhatsApp al cliente (distinto de Slack: va fuera, no al equipo) ---------- */
+  .wa-box{
+    margin-top:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.78rem;
+    white-space:pre-line; line-height:1.55; padding:12px 14px; border-radius:8px;
+    background:#DCF4E3; color:var(--ink); border:1px solid #25A95C;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .wa-box{ background:#16321F; border-color:#3BBE75; }
+  }
+  :root[data-theme="dark"] .wa-box{ background:#16321F; border-color:#3BBE75; }
+  .wa-box-head{
+    font-family:"IBM Plex Sans"; font-weight:600; font-size:0.82rem; color:#1E8E4F;
+    margin-bottom:6px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .wa-box-head{ color:#3BBE75; }
+  }
+  :root[data-theme="dark"] .wa-box-head{ color:#3BBE75; }
 </style>
 </head>
 <body>
@@ -431,6 +450,7 @@ const clientes = [
     id: "ohana",
     empresa: "Ohana Pilates",
     contacto: "Sara Muñiz",
+    whatsapp: "+34 611 234 567",
     entrada: "Estándar",
     cc: true,
     entidad: "SL",
@@ -452,6 +472,7 @@ const clientes = [
     id: "vergel",
     empresa: "Vergel Urbano",
     contacto: "Nayara Ibáñez",
+    whatsapp: "+34 622 345 678",
     entrada: "Estándar",
     cc: true,
     entidad: "SL",
@@ -474,6 +495,7 @@ const clientes = [
     id: "kanna",
     empresa: "Kanna CBD Sur",
     contacto: "Rubén Casals",
+    whatsapp: "+34 633 456 789",
     entrada: "Estándar",
     cc: true,
     entidad: "SL",
@@ -496,6 +518,7 @@ const clientes = [
     id: "alba",
     empresa: "Estética Alba Luz",
     contacto: "Alba Ferreiro",
+    whatsapp: "+34 644 567 890",
     entrada: "Formación",
     cc: false,
     entidad: "SL",
@@ -517,6 +540,7 @@ const clientes = [
     id: "vitalia",
     empresa: "Clínica Vitalia",
     contacto: "Marcos Peña",
+    whatsapp: "+34 655 678 901",
     entrada: "Estándar",
     cc: true,
     entidad: "LLC",
@@ -542,6 +566,7 @@ const clientes = [
     id: "levelup",
     empresa: "Growshop Level Up",
     contacto: "Diego Ferrán",
+    whatsapp: "+34 666 789 012",
     entrada: "Estándar",
     cc: true,
     entidad: "SL",
@@ -575,6 +600,15 @@ Cliente: Growshop Level Up
 Activada por Micaela el ${fmtFecha(-1)}
 → Ya está en marcha — registrada como Activa en Airtable.`,
     },
+    whatsappClienteEnviado: {
+      when: "hace 1 día",
+      numero: "+34 666 789 012",
+      mensaje: `¡Hola Diego Ferrán! 🎉 Tu campaña de Growshop Level Up ya está activa. A partir de ahora puedes empezar a recibir clientes a través de Nemetea.
+
+Cualquier duda, responde a este mismo WhatsApp.
+
+— Equipo Nemetea`,
+    },
     historial: [
       { when: "hace 20 días", note: "Carpeta de Drive enviada." },
       { when: "hace 14 días", note: "Material completo confirmado por Gisela — dentro de la 1ª semana, califica regalo de 20 días de Contact Center." },
@@ -583,12 +617,14 @@ Activada por Micaela el ${fmtFecha(-1)}
       { when: "hace 3 días", note: "Enlace de Stripe del Pago 2 (298.50 €) enviado por Email — válido 24 horas, también copiable para mandar por WhatsApp." },
       { when: "hace 2 días", note: "Webhook de Stripe confirma el cobro del Pago 2 (298.50 €)." },
       { when: "hace 1 día", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." },
+      { when: "hace 1 día", note: "Mensaje de WhatsApp enviado a Diego Ferrán (+34 666 789 012) avisando de que la campaña está activa." },
     ],
   },
   {
     id: "zen",
     empresa: "Espacio Zen Wellness",
     contacto: "Paula Roig",
+    whatsapp: "+34 677 890 123",
     entrada: "Estándar",
     cc: true,
     entidad: "SL",
@@ -619,6 +655,7 @@ Activada por Micaela el ${fmtFecha(-1)}
     id: "norte",
     empresa: "Barbería Norte & Cía",
     contacto: "Yasmina Roldán",
+    whatsapp: "+34 688 901 234",
     entrada: "Estándar",
     cc: true,
     entidad: "SL",
@@ -1357,6 +1394,14 @@ function renderCbDetail(){
       <p class="note-hint">Confirma al equipo de montaje que Micaela ya dio el clic de activar — distinto del aviso de lanzamiento, que solo decía que podían hacerlo.</p>
     </div>` : ""}
 
+    ${c.whatsappClienteEnviado ? `
+    <div class="section">
+      <h3>Aviso al cliente</h3>
+      <div class="wa-box-head">✓ WhatsApp enviado el ${c.whatsappClienteEnviado.when} a ${c.whatsappClienteEnviado.numero}</div>
+      <div class="wa-box">${c.whatsappClienteEnviado.mensaje}</div>
+      <p class="note-hint">Este es el único de los cuatro avisos del flujo que sale fuera de Nemetea — los demás (material completo, Pago 2 confirmado, activación) son internos, a Slack.</p>
+    </div>` : ""}
+
     <div class="gate">
       <div class="gate-info">${c.activada
         ? "<b>Campaña activa.</b> Fecha de activación registrada en Airtable."
@@ -1445,6 +1490,20 @@ Activada por Micaela el ${fmtFecha(today)}
 → Ya está en marcha — registrada como Activa en Airtable.`,
       };
       c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) confirmando que la campaña quedó activada." });
+
+      // ---- aviso al cliente por WhatsApp: su campaña ya está activa ----
+      // Distinto de los avisos de Slack de arriba: ese es interno (equipo de
+      // montaje), este sale hacia fuera, al contacto del cliente.
+      c.whatsappClienteEnviado = {
+        when: fmtFecha(today),
+        numero: c.whatsapp,
+        mensaje: `¡Hola ${c.contacto}! 🎉 Tu campaña de ${c.empresa} ya está activa. A partir de ahora puedes empezar a recibir clientes a través de Nemetea.
+
+Cualquier duda, responde a este mismo WhatsApp.
+
+— Equipo Nemetea`,
+      };
+      c.historial.push({ when: "hoy", note: `Mensaje de WhatsApp enviado a ${c.contacto} (${c.whatsapp}) avisando de que la campaña está activa.` });
 
       renderCbList();
       renderCbDetail();

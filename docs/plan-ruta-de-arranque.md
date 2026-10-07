@@ -40,6 +40,12 @@ abajo:
    también a los workflows de n8n de Stripe (seguir dejando correr los 1–9
    legacy en paralelo mientras se prueban los nuevos sobre Airtable), o es
    solo para las tablas base de Airtable/Sheets? (§10.2)
+10. **Nuevo**: el aviso de WhatsApp al cliente al activar la campaña (§2.4)
+    choca potencialmente con el alcance ya decidido en el maestro de Juan:
+    "WhatsApp Business API queda por presupuesto separado, no entra en
+    scope hasta aprobación". ¿Hay ya una vía para enviar WhatsApp (otra
+    integración, o un número ya aprobado) o este aviso queda bloqueado
+    hasta que se apruebe presupuesto?
 
 ## 0bis. Paso 0 — validación de lectura contra Airtable real (hecho)
 
@@ -109,6 +115,20 @@ estado actual, no el borrador inicial.
    material completo (ya existía) → Pago 2 cobrado, "a lanzar" (ya existía)
    → **nuevo**: confirmación de que Micaela activó la campaña, al pulsar
    "Activar Campaña". Este tercer aviso es nuevo en esta ronda.
+
+**Tercera ronda de cambios** (de Juanfra, ya aplicada en el mockup):
+4. Al pulsar "Activar Campaña" también sale un **cuarto aviso**, distinto
+   de los tres de Slack: un **WhatsApp al cliente** (no al equipo) diciendo
+   que su campaña ya está activa. Es el único de los cuatro que sale fuera
+   de Nemetea. Se añadió un campo `whatsapp` (número) a cada cliente de
+   ejemplo del mockup — en Airtable ya existe `Clientes.WhatsApp`, así que
+   no hace falta campo nuevo cuando se conecte de verdad.
+   **Pregunta nueva para el sync**: ¿quién tiene o monta la integración de
+   WhatsApp para enviar este mensaje — API de WhatsApp Business vía n8n, o
+   algo manual? El maestro de Notion de Juan dice explícitamente que
+   "WhatsApp Business API queda por presupuesto separado, no entra en
+   scope hasta aprobación" — este aviso puede chocar con esa decisión de
+   alcance y hay que aclararlo, no asumir que ya está disponible.
 
 ## 1. Fuentes
 
