@@ -143,7 +143,14 @@ ver §2.3): tareas de montaje con responsable/estado/link, ni tabla de
 ## 6. Preguntas abiertas (combinando las de Juan + nuevas del cruce)
 
 De Juan (su doc, §11, sin resolver aún):
-1. ¿Dónde escribe hoy el flujo de Pago 1 y cuándo lo migra a `Pagos`?
+1. ¿Dónde escribe hoy el flujo de Pago 1 y cuándo lo migra a `Pagos`? —
+   **verificado en n8n, sigue sin resolver del todo**: hay dos
+   implementaciones en paralelo. La legacy (`1. SLU Initial payment`, serie
+   1–9) escribe en Google Sheets + Holded. La nueva en pruebas (`Stripe -
+   Enviar Enlace de Pago (Pago 1) [TEST]`) escribe en los campos
+   `[OBSOLETO]` de `Clientes` en Airtable (`Estado del Pago 1`, `Fecha de
+   Pago 1`, `Stripe Checkout Session ID (Pago 1)`) — todavía no en `Pagos`.
+   Falta saber cuál de las dos es la autoritativa hoy (ver §7.2).
 2. ¿Quién crea el registro de `Cobros` por cliente — el flujo al firmar
    contrato, o el script de carga de Juan?
 3. ¿La carga histórica la hace Juanfra directo en Airtable, o Juan prepara un
@@ -166,11 +173,14 @@ Nuevas, de este cruce (actualizadas tras v1.0):
    ¿un webhook de `invoice.paid` de la suscripción crea cada fila al vuelo,
    o hace falta un paso adicional que las vuelque desde Stripe? Pregunta
    para Juan.
-7. **Nuevo**: los tres avisos de Slack (`#montaje-campañas`: material
-   completo, Pago 2 confirmado, campaña activada) — ¿quién tiene (o crea) el
-   webhook/app de Slack para ese canal, y lo dispara n8n o lo dispara esta
-   interfaz directamente? ¿Hace falta guardar el mensaje enviado en Airtable
-   (como actividad) o basta con que quede en Slack?
+7. Los tres avisos de Slack (mockup: `#montaje-campañas` — material
+   completo, Pago 2 confirmado, campaña activada) — **parcialmente
+   verificado** (§7.3): ya existe un canal real `#activación-de-campaña`
+   que n8n usa hoy al confirmarse el Pago 2 en el pipeline legacy. Falta
+   decidir si el mockup reutiliza ese canal o usa uno nuevo, y si lo
+   dispara n8n (más consistente con cómo ya funciona) o esta interfaz
+   directamente. ¿Hace falta guardar el mensaje enviado en Airtable (como
+   actividad) o basta con que quede en Slack?
 8. **Nuevo**: con el panel de Montaje reducido a "Contenido entregado" +
    "Campaña lista →", ¿quién marca ese botón en la práctica — Micaela
    esperando el aviso del equipo por Slack (como dice el mock), o hace falta
@@ -185,35 +195,84 @@ Nuevas, de este cruce (actualizadas tras v1.0):
 
 ## 7. Modelo de suscripción: Pago 2 → permanencia → ciclo natural
 
-Aclaración de Juanfra, importante porque cambia el mecanismo (no solo el
-cálculo, que el mockup ya tenía bien):
+### 7.1 Mecanismo verificado contra n8n (no es una suposición)
 
-1. **Al generarse el enlace de pago del Pago 2** no se cobra un único pago
-   suelto — se crea una **suscripción de Stripe con 3 meses de
-   permanencia**: este Pago 2 + mes 2 + mes 3, misma fecha del mes que la
-   confirmación del Pago 2 (así lo calcula ya `calcProximosCobros` en el
-   mockup).
-2. **Si el cliente decide continuar** al cumplirse los 3 meses: se prorratea
-   hasta fin de mes natural (ya calculado en el mock: `diasProrrateo`,
-   `importeProrrateo`), y la suscripción **cambia a ciclo natural**
-   (mensual).
-3. **Día de cobro en ciclo natural**: Tarjeta el **28**, SEPA el **27** —
-   este dato ya estaba bien en el mockup desde el principio; en el mensaje
-   anterior se mencionó por error un 29 para SEPA, ya corregido de vuelta
-   a 27.
+Juanfra confirma que **ya existe en n8n** un pipeline de producción maduro
+(series numeradas `1.` a `9.`, separado en SLU/LLC, con copias `[TEST]` y
+`[PROD]`) que ya implementa suscripción + prorrateo. Se leyeron directamente
+los workflows `2. SLU Handle Stripe checkout payments` [PROD] y
+`4. SLU Handle canceled Stripe bridge and permanent subscriptions` [PROD]
+para entender el mecanismo real, en vez de suponerlo. Esto **reemplaza** la
+hipótesis anterior de este documento (Stripe Subscription Schedules) — el
+mecanismo real es otro:
 
-Esto ya estaba bien calculado en el mockup (sección "Próximos cobros",
-renombrada aquí a "Suscripción de permanencia" para que el texto no suene a
-que son fechas orientativas sueltas). Lo que cambia es que **esto debe
-construirse como una suscripción real de Stripe**, no como filas de `Pagos`
-generadas una a una por un cron o a mano.
+1. **Al confirmarse el checkout de Pago 2** ("campaign activation" en el
+   nombre de los nodos), el workflow `2.` crea directamente una
+   **suscripción "bridge" de Stripe** (`POST /v1/subscriptions`) con:
+   - `billing_cycle_anchor` = dentro de ~1 mes desde la confirmación (hora
+     aleatoria entre la 1am y las 7am, para no agrupar cobros).
+   - `cancel_at` = exactamente 2 meses después del anchor (así que la
+     suscripción cubre mes 2 y mes 3; el propio Pago 2 ya se cobró aparte,
+     en el checkout).
+   - `proration_behavior: none`, `payment_behavior: default_incomplete`.
+   - `metadata.bridge_phase = "true"` — así es como se identifica luego.
+   - Admite `card` y `sepa_debit` como métodos de pago.
+2. **Cuando la suscripción bridge llega a su `cancel_at`** (automático, lo
+   dispara Stripe), llega un webhook `customer.subscription.deleted`. El
+   workflow `4.` comprueba `metadata.bridge_phase === "true"` y si es así:
+   - Calcula el **prorrateo** ("gap") hasta fin de mes natural, por línea de
+     producto, aplicando IVA 21% y retención 15% (caso autónomo) y el cupón
+     de descuento por referido si aplica.
+   - Si el importe del gap es mayor que cero: crea una factura en **Holded**
+     (no solo Stripe) para el prorrateo, la marca pagada y la envía — y crea
+     también el invoice item + invoice correspondiente en **Stripe** para
+     cobrar ese importe.
+   - Crea la **suscripción "permanent"** (`metadata.permanent_phase =
+     "true"`), con `billing_cycle_anchor` alineado al **día 27 (SEPA) / 28
+     (Tarjeta)** — confirma exactamente lo que dijo Juanfra, línea de código
+     real: `const targetDay = pmType === 'sepa_debit' ? 27 : 28;`.
 
-Implicación técnica a confirmar con quien construya el workflow de n8n: el
-mecanismo natural de Stripe para una suscripción con una fase de permanencia
-de N meses y un cambio automático de importe/ciclo al final es
-**Subscription Schedules** (fases) — a verificar que encaja con el resto
-del flujo (conciliar cada cobro de la suscripción contra una fila de
-`Pagos`, vía el webhook `invoice.paid`).
+### 7.2 Hallazgo importante: este pipeline no usa Airtable
+
+Los workflows `1.`/`2.`/`4.` (y el resto de la serie) escriben en **Google
+Sheets** (`Clientes sheet`, `Modificar Suscripciones sheet`, `Reuniones
+Calendly sheet`) y en **Holded** (facturación), no en Airtable. Es decir:
+el mecanismo de suscripción/prorrateo que pidió la compañera y confirma
+Juanfra **ya existe y funciona en producción**, pero sobre un sistema
+distinto al que se está construyendo con `Ruta de Arranque` + Airtable +
+el esquema de Juan. Esto es una pregunta de arquitectura real para el sync
+del jueves, no algo que yo deba decidir:
+
+- **¿Se migran estos workflows 1–9 para que escriban en Airtable** (mismo
+  mecanismo de Stripe, redirigiendo las escrituras de Sheets/Clientes a
+  `Pagos`/`Cobros`)**, o se reconstruyen desde cero sobre Airtable
+  reusando solo el mecanismo** (bridge subscription, cálculo de gap, día
+  27/28)?
+- El propio Pago 1 ya tiene **dos implementaciones en paralelo** ahora
+  mismo: la legacy (`1. SLU Initial payment`, sobre Sheets+Holded) y la
+  nueva en pruebas (`Stripe - Enviar Enlace de Pago (Pago 1) [TEST]`,
+  sobre Airtable, §6.1). Falta saber cuál es la autoritativa hoy.
+
+### 7.3 Otro hallazgo: el canal de Slack ya existe, y no es el que inventé
+
+El workflow `2.` ya envía una notificación de Slack al confirmarse el Pago 2
+("Pago activación de campaña completado") al canal real
+**`#activación-de-campaña`** (`C0BP5KCEFD5`) — no a `#montaje-campañas`,
+que fue un nombre que yo me inventé al construir la sección de avisos en el
+mockup sin tener este dato. Hay un canal `#comercial` (`C0B5ZAEH127`)
+aparte para el aviso de Pago 1. **Pendiente de decidir con Juanfra**: ¿el
+nuevo mockup reutiliza `#activación-de-campaña`, o es un canal nuevo porque
+el flujo de "Ruta de Arranque" tiene pasos distintos (material completo,
+campaña lista, activación) a los de este pipeline legacy? El mockup sigue
+diciendo `#montaje-campañas` hasta que se confirme.
+
+### 7.4 Nota de seguridad (no es parte del encargo, solo queda anotada)
+
+El nodo `Validate the incoming data` del workflow `4.` verifica la firma de
+Stripe con un `endpointSecret` **hardcodeado en el código** del nodo
+(`whsec_...`), en vez de usar una credencial de n8n. Es una práctica
+delicada (el secreto queda visible a cualquiera con acceso de lectura al
+workflow) — se deja anotado para quien revise seguridad, no se ha tocado.
 
 ## 8. Qué no se toca todavía
 
