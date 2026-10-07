@@ -29,11 +29,17 @@ abajo:
 6. **Canal de Slack**: ¿se reutiliza `#activación-de-campaña` (ya existe y
    ya lo usa el pipeline legacy) o se crea uno nuevo para Ruta de Arranque?
    ¿Lo dispara n8n o la interfaz? (§7.3, §6.7)
-7. Carga histórica de pagos: ¿la hace Juanfra directo en Airtable, o Juan
-   prepara un CSV con el formato de `Pagos`? (§6.3, pregunta de Juan)
+7. ~~Carga histórica de pagos~~ — **resuelto** (maestro de Notion, M20): la
+   carga la hace Juanfra directo en Airtable al conectar Stripe. No hace
+   falta CSV de Juan. (§6.3)
 8. Los 4 ajustes del Pago 2 del mock (CC, penalización, montaje, manual)
    — ¿pueden coexistir en una misma cuota con un único `Concepto de
    ajuste` por fila? (§6.5)
+9. **Nuevo**: la regla de gobierno de la migración dice "no cortar Sheets
+   hasta dos semanas de operación paralela sin incidencias" — ¿aplica
+   también a los workflows de n8n de Stripe (seguir dejando correr los 1–9
+   legacy en paralelo mientras se prueban los nuevos sobre Airtable), o es
+   solo para las tablas base de Airtable/Sheets? (§10.2)
 
 **Changelog**: v1.0 del mockup ya incorpora los cambios que pidió la
 compañera que lo validó. Este documento queda actualizado contra esa versión
@@ -183,8 +189,10 @@ De Juan (su doc, §11, sin resolver aún):
    Falta saber cuál de las dos es la autoritativa hoy (ver §7.2).
 2. ¿Quién crea el registro de `Cobros` por cliente — el flujo al firmar
    contrato, o el script de carga de Juan?
-3. ¿La carga histórica la hace Juanfra directo en Airtable, o Juan prepara un
-   CSV con el formato de `Pagos`?
+3. ~~¿La carga histórica la hace Juanfra directo en Airtable, o Juan prepara
+   un CSV con el formato de `Pagos`?~~ — **resuelto** (maestro de Notion,
+   M20, 7 oct): "Sin datos de pagos cargados: la carga la hace Juanfra al
+   conectar Stripe." La hace Juanfra directo, no hace falta CSV de Juan.
 
 Nuevas, de este cruce (actualizadas tras v1.0):
 4. Onboarding (carpeta enviada / plazo / prórroga / checklist) y SLA de
@@ -342,7 +350,69 @@ workflow) — se deja anotado para quien revise seguridad, no se ha tocado.
    activar campaña) — el resto lo escribe n8n/Stripe, nunca la interfaz a
    mano.
 
-## 10. Referencia rápida de IDs (de Juan)
+## 10. Lo relevante del documento maestro de Notion (Juan)
+
+Juan lleva un documento maestro en Notion ("NEMETEA CRM — Migración
+Airtable") que registra todo el proyecto de migración de Airtable, no solo
+Cobros/Pagos — Prospectos, Leads, Campañas, KPIs, etc. La mayoría no afecta
+a Ruta de Arranque. Lo que sí:
+
+### 11.1 Resuelve preguntas que teníamos abiertas
+
+- **Carga histórica de pagos** (§6.3): confirmado, la hace Juanfra al
+  conectar Stripe — ya no es pregunta.
+- **M20 (7 oct, mismo día que el doc de Juan que ya teníamos)**: confirma
+  la misma reestructuración Cobros/Pagos que ya documentamos en §3 — mismo
+  modelo, sin contradicciones. `Pagos` es la tabla 17, `Cobros` la 16.
+- **Actividades es polimórfica de verdad** (COR-002): cuelga de Lead,
+  Campaña **o Cliente**. Esto respalda la recomendación de §4 de modelar
+  ahí la carpeta enviada / plazo / material completo / avisos de Slack, en
+  vez de inventar campos nuevos en `Clientes` — es exactamente el patrón
+  para el que está pensada esa tabla. Para usarla hace falta dar de alta
+  nuevos `Tipos de Actividad` (ej. "Carpeta enviada", "Material completo",
+  "Aviso Slack montaje") en su catálogo (`tblDimCZYGQ0Z3wcu`, 13 tipos
+  cargados hoy).
+
+### 11.2 Afecta a una decisión que ya habíamos tomado
+
+**Regla de gobierno de la migración**: "Construir en Airtable en paralelo
+con Sheets activo. No cortar Sheets hasta dos semanas de operación paralela
+sin incidencias." Esto no contradice la decisión de construir workflows
+nuevos sobre Airtable portando la lógica (no reutilizar los 1–9), pero sí
+implica que **los workflows legacy sobre Sheets probablemente siguen vivos
+un tiempo** en paralelo con los nuevos, no se apagan el mismo día. Pregunta
+nueva en §0.9.
+
+### 11.3 Contexto de equipo (puede explicar quién es "la compañera")
+
+Corrección de personas del 15 sept: **Tamara es UI developer y trabaja en
+la interfaz** — es la candidata más probable a ser "la compañera" que pidió
+matizar `ruta-de-arranque.html` (sin confirmar, pero encaja). También:
+Ani es Head of Performance, y **Juanfra reemplaza a Diego en
+automatizaciones** — las referencias a "coordinación con Diego" en
+documentación más antigua (incluida dentro de este mismo maestro, sección
+de restricciones técnicas) están desactualizadas.
+
+### 11.4 Restricciones operativas a tener en cuenta al construir el workflow de Pago 2
+
+- Rate limit de Airtable: **5 peticiones por segundo por base**, en todos
+  los planes — el workflow nuevo de n8n tiene que respetarlo.
+- Plan de Airtable actual es de arranque (Free/Team); Business/Enterprise
+  se decide más adelante — no es bloqueante hoy, pero a 120+ clientes con
+  filas de `Pagos` por cuota puede acercarse a límites de registros antes
+  de lo esperado.
+
+### 11.5 No es parte de ningún milestone todavía
+
+El plan de milestones del maestro (M0–M20) cubre la construcción de las
+tablas base de Airtable, no construye Ruta de Arranque ni el workflow de
+Pago 2 — eso vive hoy solo en este documento. Si se quiere que conste en
+el maestro de Juan (para que el resto del equipo lo vea), probablemente le
+corresponda su propio milestone (M21 o similar) una vez el sync de mañana
+resuelva el punch list de §0 — decisión de Juan, no algo que yo deba
+proponerle sin que me lo pidan.
+
+## 11. Referencia rápida de IDs (de Juan)
 
 - Base: `appEZnB8ZDVAcBDAV`
 - `Clientes`: `tbl6noqdseYfm4czi`
@@ -350,3 +420,4 @@ workflow) — se deja anotado para quien revise seguridad, no se ha tocado.
 - `Pagos`: `tbl1wdaroBGCGCs30`
 - `Actividades`: `tbliKYom7iqz7NfAX`
 - `Campañas`: `tbleWdnYTdDph5cVQ`
+- `Tipos de Actividad`: `tblDimCZYGQ0Z3wcu`
