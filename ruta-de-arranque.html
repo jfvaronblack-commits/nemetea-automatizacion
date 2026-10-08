@@ -435,7 +435,7 @@
 
   <!-- ============ COBRO Y ACTIVACIÓN ============ -->
   <section class="view" id="view-cobro" hidden>
-    <p class="subhead" style="margin-top:-6px;">El equipo ya avisó que la campaña está lista. Aquí se envía el Pago 2, se confirma el cobro y se activa la campaña — ya no depende de nadie de montaje.</p>
+    <p class="subhead" style="margin-top:-6px;">Conectado a Airtable y Stripe de verdad (modo TEST) — clientes reales con el Pago 1 ya cobrado. <button type="button" id="cb-refresh" class="ghost" style="margin-left:8px;">↻ Refrescar</button></p>
     <div class="board">
       <div>
         <p class="panel-title">Clientes listos para cobro</p>
@@ -1389,235 +1389,222 @@ Cualquier duda, responde a este mismo WhatsApp.
 // Cobro y activación — el equipo ya avisó que la campaña está lista.
 // Aquí se envía/confirma el Pago 2 y se activa la campaña.
 // ---------------------------------------------------------------
-let cbSelected = (clientes.find(c=>c.fase==="Cobro") || {}).id;
+// ---------------------------------------------------------------
+// Cobro y activación — CONECTADA DE VERDAD a Airtable/n8n/Stripe (ya no
+// es demo). La lista y el estado de Pago 1/Pago 2 se leen del webhook
+// real "lista-cobro-activacion"; "Enviar enlace de pago" llama también
+// al webhook real y crea una sesión real de Stripe Checkout (modo
+// TEST). Las otras 3 pestañas (Onboarding, Montaje, Primer mes) siguen
+// con datos de ejemplo — su modelo de datos aún no existe en Airtable.
+// ---------------------------------------------------------------
+const N8N_BASE = "https://n8n.nemetea.com/webhook";
 
-// Pago 2 confirmado y sin ver = burbuja estilo WhatsApp, en la ficha y en
-// la pestaña — para que Micaela no tenga que estar mirando este panel
-// cuando llega el webhook de Stripe, igual que una notificación de verdad.
-function pago2SinVer(c){ return c.pago2 === "Cobrado" && c.pago2Visto === false && !c.activada; }
+let clientesReales = [];
+let cbSelected = null;
+let cbLoading = true;
+let cbError = null;
+
+async function cargarClientesReales(){
+  cbLoading = true;
+  cbError = null;
+  renderCbList();
+  renderCbDetail();
+  try {
+    const res = await fetch(`${N8N_BASE}/lista-cobro-activacion`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    clientesReales = await res.json();
+  } catch(e){
+    clientesReales = [];
+    cbError = e.message || "Error de red";
+  }
+  cbLoading = false;
+  if (!clientesReales.some(c=>c.id===cbSelected)) cbSelected = clientesReales[0]?.id || null;
+  renderCbList();
+  renderCbDetail();
+}
+
+function pago2ChipClass(estado){
+  return estado === "Cobrado" ? "ok" : estado === "Enviado" ? "warm" : "pending";
+}
 
 function renderCbList(){
   const list = document.getElementById("cb-list");
   list.innerHTML = "";
-  const enCobro = clientes.filter(c=>c.fase==="Cobro");
-  if (!enCobro.some(c=>c.id===cbSelected)) cbSelected = enCobro[0]?.id;
-  enCobro.forEach(c=>{
-    const pago2calc = calcPago2(c);
-    const regalo = regaloChip(c);
-    const penal = penalizacionChip(c);
+  document.getElementById("cobro-badge").hidden = true;
+  if (cbLoading){
+    list.innerHTML = `<p class="empty-step"><span>Cargando clientes reales desde Airtable…</span></p>`;
+    return;
+  }
+  if (cbError){
+    list.innerHTML = `<p class="empty-step"><span>Error cargando clientes: ${cbError}</span></p>`;
+    return;
+  }
+  clientesReales.forEach(c=>{
     const card = document.createElement("button");
     card.className = "card";
     card.setAttribute("aria-current", c.id === cbSelected);
+    const estado = c.pago2Estado || "Pendiente";
     card.innerHTML = `
       <div class="card-top">
         <span class="card-name">${c.empresa}</span>
-        <span class="chip ${c.pago2 === "Cobrado" ? "ok" : c.pago2 === "Enviado" ? "warm" : "pending"}">Pago 2 · ${c.pago2}</span>
-        ${pago2SinVer(c) ? `<span class="notif-badge" title="Pago confirmado — sin ver">1</span>` : ""}
+        <span class="chip ${pago2ChipClass(c.pago2Estado)}">Pago 2 · ${estado}</span>
       </div>
-      <div class="card-meta"><span>${c.contacto}</span></div>
-      <div class="card-meta">
-        <span class="chip ${regalo.cls}">${regalo.text}</span>
-        ${penal.text !== "Sin penalización" ? `<span class="chip ${penal.cls}">${penal.text}</span>` : ""}
-      </div>
-      <div class="card-meta">
-        <span class="num" style="font-size:0.78rem; color:var(--ink-dim);">Total Pago 2: <b style="color:var(--ink);">${fmtMonto(pago2calc.total, c)}</b></span>
-        ${c.activada ? `<span class="chip ok">Campaña activa</span>` : ""}
-      </div>
+      <div class="card-meta"><span>${c.contacto} · ${c.entidad}</span></div>
     `;
     card.addEventListener("click", ()=>{
       cbSelected = c.id;
-      c.pago2Visto = true;
       renderCbList();
       renderCbDetail();
     });
     list.appendChild(card);
   });
-  if (!enCobro.length){
-    list.innerHTML = `<p class="empty-step"><span>Todavía no hay clientes con la campaña lista.</span></p>`;
+  if (!clientesReales.length){
+    list.innerHTML = `<p class="empty-step"><span>Todavía no hay clientes con el Pago 1 cobrado en Airtable.</span></p>`;
   }
-
-  const sinVer = enCobro.filter(pago2SinVer).length;
-  const badge = document.getElementById("cobro-badge");
-  badge.hidden = sinVer === 0;
-  badge.textContent = sinVer;
 }
 
 function renderCbDetail(){
-  const c = clientes.find(x=>x.id===cbSelected);
-  if (!c){ document.getElementById("cb-detail").innerHTML = ""; return; }
-  const listo = c.pago2 === "Cobrado" && !c.activada;
-  const regalo = regaloChip(c);
-  const penal = penalizacionChip(c);
+  const c = clientesReales.find(x=>x.id===cbSelected);
   const detail = document.getElementById("cb-detail");
+  if (!c){ detail.innerHTML = ""; return; }
+  c._toggles = c._toggles || { cc: "", montaje: false, penalizacion: false, ajusteManual: 0, ajusteManualConcepto: "" };
+  const t = c._toggles;
+  const cobrado = c.pago2Estado === "Cobrado";
+  const enviado = c.pago2Estado === "Enviado";
+
   detail.innerHTML = `
     <div class="d-head">
       <div>
         <div class="d-name">${c.empresa}</div>
-        <div class="d-sub">${c.contacto} · Canal de entrega: ${c.canal}</div>
+        <div class="d-sub">${c.contacto} · ${c.email} · ${c.entidad} · ${c.moneda}</div>
       </div>
       <div class="d-chips">
-        <span class="chip ${c.pago2 === "Cobrado" ? "ok" : c.pago2 === "Enviado" ? "warm" : "pending"}">Pago 2 · ${c.pago2}</span>
-        ${c.activada ? `<span class="chip ok">Campaña activa</span>` : ""}
+        <span class="chip ok">Pago 1 · ${c.pago1Estado}</span>
+        <span class="chip ${pago2ChipClass(c.pago2Estado)}">Pago 2 · ${c.pago2Estado || "Pendiente"}</span>
       </div>
     </div>
-    <div class="d-chips" style="margin-top:8px;">
-      <span class="chip ${regalo.cls}">${regalo.text}</span>
-      <span class="chip ${penal.cls}">${penal.text}</span>
+
+    <div class="section">
+      <h3>Segundo pago — datos reales de Airtable/Stripe</h3>
+      ${cobrado ? `
+        <div class="stripe-card confirmed">
+          <h4>Enlace de pago — Stripe Checkout</h4>
+          <div class="confirmed-line">✓ Cobro confirmado por Stripe</div>
+          ${c.pago2LinkEnviadoFecha ? `<div class="method-line">Último proceso: ${c.pago2LinkEnviadoFecha}</div>` : ""}
+        </div>
+      ` : `
+        <div class="price-row">
+          <div class="lbl">¿Contact Center contratado?</div>
+          <select id="cb-real-cc">
+            <option value="" ${!t.cc ? "selected" : ""}>No</option>
+            <option value="regalo" ${t.cc==="regalo" ? "selected" : ""}>Sí — regalo 20 días (50€)</option>
+            <option value="completo" ${t.cc==="completo" ? "selected" : ""}>Sí — completo (150€)</option>
+          </select>
+        </div>
+        <div class="price-row">
+          <div class="lbl">Montaje inicial (250€)</div>
+          <input type="checkbox" id="cb-real-montaje" ${t.montaje ? "checked" : ""}>
+        </div>
+        <div class="price-row">
+          <div class="lbl">Penalización por entrega tardía</div>
+          <input type="checkbox" id="cb-real-penalizacion" ${t.penalizacion ? "checked" : ""}>
+        </div>
+        <div class="price-row">
+          <div class="lbl">Ajuste manual (negativo = descuento)</div>
+          <input type="number" class="adjust-input" id="cb-real-ajuste" value="${t.ajusteManual || 0}" step="1">
+        </div>
+        <div class="price-row">
+          <div class="lbl">Concepto del ajuste manual</div>
+          <input type="text" id="cb-real-ajuste-concepto" value="${t.ajusteManualConcepto || ""}" placeholder="opcional">
+        </div>
+        <div class="stripe-card" style="margin-top:14px;">
+          <div class="stripe-card-head">
+            <h4>Enlace de pago — Stripe Checkout (real, modo TEST)</h4>
+            <button class="stripe-cta" id="cb-real-send" ${enviado ? "disabled" : ""}>${enviado ? "Enlace ya enviado" : "Enviar enlace de pago →"}</button>
+          </div>
+          ${enviado ? `<div class="status">Enviado — esperando confirmación real de Stripe</div>` : `<div class="status">Listo para enviar</div>`}
+          ${c.pago2Link ? `
+            <div class="link-copy-row">
+              <input type="text" readonly value="${c.pago2Link}" id="cb-real-link-input" onclick="this.select()">
+              <button type="button" id="cb-real-copy-link">Copiar</button>
+            </div>
+          ` : ""}
+          <p class="note-hint">Esto llama de verdad al webhook "Stripe - Enviar Enlace de Pago (Pago 2)" y crea una sesión real de Stripe Checkout en modo TEST. Pulsa "↻ Refrescar" arriba después de pagar en Stripe para ver el estado actualizado.</p>
+        </div>
+      `}
     </div>
-    <div class="date-line">Material completo <b>${fmtFecha(c.materialCompletoDay)}</b> · campaña lista confirmada por el equipo.</div>
-
-    <div class="section">
-      <h3>Segundo pago — cálculo automático</h3>
-      ${renderPago2Block(c)}
-      ${renderCobroPago2Block(c)}
-    </div>
-    ${c.pago2 === "Cobrado" ? renderProximosCobros(c) : ""}
-
-    ${c.slackLanzamientoEnviado ? `
-    <div class="section">
-      <h3>Aviso de lanzamiento</h3>
-      <div class="slack-box-head">✓ Enviado por Slack el ${c.slackLanzamientoEnviado.when}</div>
-      <div class="slack-box">${c.slackLanzamientoEnviado.mensaje}</div>
-      <p class="note-hint">El equipo lanza la campaña por su cuenta (Ads, landing…). El botón de abajo solo registra en Airtable que ya está en marcha.</p>
-    </div>` : ""}
-
-    ${c.slackActivacionEnviada ? `
-    <div class="section">
-      <h3>Aviso de activación</h3>
-      <div class="slack-box-head">✓ Enviado por Slack el ${c.slackActivacionEnviada.when}</div>
-      <div class="slack-box">${c.slackActivacionEnviada.mensaje}</div>
-      <p class="note-hint">Confirma al equipo de montaje que Micaela ya dio el clic de activar — distinto del aviso de lanzamiento, que solo decía que podían hacerlo.</p>
-    </div>` : ""}
-
-    ${c.whatsappClienteEnviado ? `
-    <div class="section">
-      <h3>Aviso al cliente</h3>
-      <div class="wa-box-head">✓ WhatsApp enviado el ${c.whatsappClienteEnviado.when} a ${c.whatsappClienteEnviado.numero}</div>
-      <div class="wa-box">${c.whatsappClienteEnviado.mensaje}</div>
-      <p class="note-hint">Este es el único de los cuatro avisos del flujo que sale fuera de Nemetea — los demás (material completo, Pago 2 confirmado, activación) son internos, a Slack.</p>
-    </div>` : ""}
 
     <div class="gate">
-      <div class="gate-info">${c.activada
-        ? "<b>Aviso enviado.</b> Fecha de activación registrada en Airtable — el equipo de montaje la activa en redes."
-        : listo
-          ? "<b>Pago confirmado.</b> Pulsa para avisar al equipo de montaje de que ya pueden activarla."
-          : "Bloqueado hasta que el Pago 2 esté cobrado."}</div>
-      <button class="primary" id="cb-activate" ${listo ? "" : "disabled"}>${c.activada ? "Activar Campaña ✓" : "Activar Campaña"}</button>
+      <div class="gate-info">${cobrado
+        ? "<b>Pago 2 confirmado.</b> «Activar Campaña» todavía no está conectado de verdad — pendiente de construir (requiere decidir el modelo de Campañas en Airtable)."
+        : "Bloqueado hasta que el Pago 2 esté cobrado (lo confirma el webhook real de Stripe, no un botón)."}</div>
+      <button class="primary" disabled title="Pendiente de construir">Activar Campaña</button>
     </div>
   `;
 
-  detail.querySelectorAll('input[data-toggle]').forEach(inp=>{
-    inp.addEventListener("change", (e)=>{
-      c.pago2Toggles[e.target.dataset.toggle] = e.target.checked;
-      renderCbDetail();
-    });
-  });
-  const ajusteInput = detail.querySelector("#pago2-ajuste");
-  if (ajusteInput){
-    ajusteInput.addEventListener("change", (e)=>{
-      c.pago2Toggles.ajuste = Number(e.target.value) || 0;
-      renderCbDetail();
-    });
-  }
-  const sendStripeBtn = detail.querySelector("#cb-send-stripe");
-  if (sendStripeBtn){
-    sendStripeBtn.addEventListener("click", ()=>{
-      c.pago2 = "Enviado";
-      // enlace de ejemplo — en producción lo devuelve la sesión de Stripe Checkout
-      c.pago2Link = `https://checkout.stripe.com/c/pay/${c.id}-pago2-${Date.now().toString(36)}`;
-      c.pago2LinkEnviadoDay = today;
-      c.historial = c.historial || [];
-      c.historial.push({ when: "hoy", note: `Enlace de Stripe del Pago 2 (${fmtMonto(calcPago2(c).total, c)}) enviado por ${c.canal} — válido 24 horas, también copiable para mandar por WhatsApp.` });
-      renderCbList();
-      renderCbDetail();
-    });
-  }
-  const copyLinkBtn = detail.querySelector("#cb-copy-link");
-  if (copyLinkBtn){
-    copyLinkBtn.addEventListener("click", ()=>{
-      const input = detail.querySelector("#cb-link-input");
+  const ccSel = detail.querySelector("#cb-real-cc");
+  if (ccSel) ccSel.addEventListener("change", e=>{ t.cc = e.target.value; });
+  const montajeChk = detail.querySelector("#cb-real-montaje");
+  if (montajeChk) montajeChk.addEventListener("change", e=>{ t.montaje = e.target.checked; });
+  const penalChk = detail.querySelector("#cb-real-penalizacion");
+  if (penalChk) penalChk.addEventListener("change", e=>{ t.penalizacion = e.target.checked; });
+  const ajusteInp = detail.querySelector("#cb-real-ajuste");
+  if (ajusteInp) ajusteInp.addEventListener("change", e=>{ t.ajusteManual = Number(e.target.value) || 0; });
+  const ajusteConceptoInp = detail.querySelector("#cb-real-ajuste-concepto");
+  if (ajusteConceptoInp) ajusteConceptoInp.addEventListener("change", e=>{ t.ajusteManualConcepto = e.target.value; });
+
+  const copyBtn = detail.querySelector("#cb-real-copy-link");
+  if (copyBtn){
+    copyBtn.addEventListener("click", ()=>{
+      const input = detail.querySelector("#cb-real-link-input");
       input.select();
       navigator.clipboard?.writeText(input.value).catch(()=>{});
-      const original = copyLinkBtn.textContent;
-      copyLinkBtn.textContent = "Copiado ✓";
-      setTimeout(()=>{ copyLinkBtn.textContent = original; }, 1500);
+      const original = copyBtn.textContent;
+      copyBtn.textContent = "Copiado ✓";
+      setTimeout(()=>{ copyBtn.textContent = original; }, 1500);
     });
   }
-  const webhookBtn = detail.querySelector("#cb-simulate-webhook");
-  if (webhookBtn){
-    webhookBtn.addEventListener("click", ()=>{
-      c.pago2 = "Cobrado";
-      // Burbuja de aviso (estilo WhatsApp) hasta que Micaela entre a verlo —
-      // en producción esto llega por webhook de Stripe en cualquier momento,
-      // no solo cuando ella está mirando precisamente a este cliente.
-      c.pago2Visto = false;
-      c.historial = c.historial || [];
-      c.historial.push({ when: "hoy", note: `Webhook de Stripe confirma el cobro del Pago 2 (${fmtMonto(calcPago2(c).total, c)}).` });
 
-      // ---- aviso a Montaje: pago confirmado, pueden lanzar la campaña ----
-      // Mismo patrón que el aviso de "material completo": se dispara solo en cuanto llega
-      // la confirmación real de Stripe, no cuando alguien dice que ya cobró.
-      c.slackLanzamientoEnviado = {
-        when: fmtFecha(today),
-        mensaje: `#montaje-campañas — Pago 2 confirmado, a lanzar
-Cliente: ${c.empresa}
-Pago 2 cobrado: ${fmtMonto(calcPago2(c).total, c)}
-→ Podéis activar la campaña cuando esté lista.`,
+  const sendBtn = detail.querySelector("#cb-real-send");
+  if (sendBtn){
+    sendBtn.addEventListener("click", async ()=>{
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Enviando…";
+      const ajustes = {
+        cc: t.cc || undefined,
+        montaje: !!t.montaje,
+        penalizacion: !!t.penalizacion,
+        ajusteManual: Number(t.ajusteManual) || 0,
+        ajusteManualConcepto: t.ajusteManualConcepto || undefined
       };
-      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) avisando de que el Pago 2 está confirmado — pueden lanzar." });
-
-      renderCbList();
-      renderCbDetail();
-    });
-  }
-  const activateBtn = detail.querySelector("#cb-activate");
-  if (activateBtn && !activateBtn.disabled){
-    activateBtn.addEventListener("click", ()=>{
-      c.activada = true;
-      c.historial = c.historial || [];
-      c.historial.push({ when: "hoy", note: "Campaña activada — se registra Fecha de Activación y pasa a «Activa» en Campañas." });
-
-      // ---- aviso a Montaje: confirmación de activación ----
-      // Tercer mensaje del flujo: distinto del de "Pago 2 confirmado, a lanzar".
-      // Este confirma que Micaela ya dio el clic de activar, no solo que se puede.
-      c.slackActivacionEnviada = {
-        when: fmtFecha(today),
-        mensaje: `#montaje-campañas — Activa Campaña
-Cliente: ${c.empresa}
-Pago 2 confirmado — luz verde de Micaela el ${fmtFecha(today)}
-→ Ya podéis activarla en redes. Se registra como Activa en Airtable.`,
-      };
-      c.historial.push({ when: "hoy", note: "Notificación enviada a Slack (#montaje-campañas) avisando al equipo que ya puede activar la campaña." });
-
-      // ---- aviso al cliente por WhatsApp: su campaña ya está activa ----
-      // Distinto de los avisos de Slack de arriba: ese es interno (equipo de
-      // montaje), este sale hacia fuera, al contacto del cliente.
-      c.whatsappClienteEnviado = {
-        when: fmtFecha(today),
-        numero: c.whatsapp,
-        mensaje: `¡Hola ${c.contacto}! 🎉 Tu campaña de ${c.empresa} ya está activa. A partir de ahora puedes empezar a recibir clientes a través de Nemetea.
-
-Cualquier duda, responde a este mismo WhatsApp.
-
-— Equipo Nemetea`,
-      };
-      c.historial.push({ when: "hoy", note: `Mensaje de WhatsApp enviado a ${c.contacto} (${c.whatsapp}) avisando de que la campaña está activa.` });
-
-      // ---- pasa a Primer mes: aquí vive el acompañamiento del cliente ----
-      c.fase = "PrimerMes";
-      c.primerMesInicioDay = today;
-      c.historial.push({ when: "hoy", note: "Entra en seguimiento de Primer mes." });
-
-      pmSelected = c.id;
-      renderCbList();
-      renderCbDetail();
-      renderPmList();
-      renderPmDetail();
-      document.getElementById("tabbtn-primermes").click();
+      try {
+        const res = await fetch(`${N8N_BASE}/enviar-enlace-pago-2`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id, ajustes })
+        });
+        const data = await res.json();
+        if (!data.ok){
+          alert("Error: " + (data.error || "desconocido"));
+          sendBtn.disabled = false;
+          sendBtn.textContent = "Enviar enlace de pago →";
+          return;
+        }
+        if (data.sinCobro){
+          alert("Pago 2 sin cobro (importe neto ≤ 0 tras ajustes) — no se generó enlace de Stripe.");
+        }
+      } catch(e){
+        alert("Error de red: " + e.message);
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Enviar enlace de pago →";
+        return;
+      }
+      await cargarClientesReales();
     });
   }
 }
+
+document.getElementById("cb-refresh").addEventListener("click", cargarClientesReales);
 
 // ---------------------------------------------------------------
 // Primer mes — tras "Activar Campaña". Durante el primer mes, cualquier
@@ -1719,8 +1706,7 @@ renderObList();
 renderObDetail();
 renderMtList();
 renderMtDetail();
-renderCbList();
-renderCbDetail();
+cargarClientesReales();
 renderPmList();
 renderPmDetail();
 </script>
