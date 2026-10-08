@@ -491,7 +491,16 @@ workflow) — se deja anotado para quien revise seguridad, no se ha tocado.
 - Nada en Airtable: no se crean campos, no se borran los `[OBSOLETO]`, no se
   cargan pagos de prueba en `Pagos`/`Cobros` (ambas están vacías en
   producción).
-- No se construye el workflow de n8n para Pago 2 ni la integración de Slack.
+- ~~No se construye el workflow de n8n para Pago 2 ni la integración de
+  Slack.~~ — **hecho (08/10)**, ver §9 Paso 4.
+- La transición suscripción puente → permanente (cancelación a los 3 meses,
+  prorrateo, facturación Holded, día 27 SEPA/28 Tarjeta) sigue **sin
+  construir** — decisión explícita de Juanfra de dejarla fuera del alcance
+  de hoy, porque ese evento no dispara hasta meses después y no hace falta
+  para la prueba end-to-end de un cliente de prueba.
+- El endpoint de n8n para "Activar Campaña" y la creación del registro de
+  `Campañas` siguen **sin construir** — se espera a que la interfaz real
+  esté conectada a Airtable.
 - No se reescribe `ruta-de-arranque.html` para leer/escribir Airtable todavía.
 
 ## 9. Paso a paso (orden de dependencias, no una lista de deseos)
@@ -534,20 +543,62 @@ Montaje, no a Pago 1/Pago 2.
     nodo) y publicó el cambio — confirmado en vivo (`versionId` =
     `activeVersionId`). Primer cliente nuevo que entre por este flujo
     servirá de prueba real.
-3b. Migrar `Stripe - Enviar Enlace de Pago (Pago 1) [TEST]` y
+3b. ~~Migrar `Stripe - Enviar Enlace de Pago (Pago 1) [TEST]` y
     `Stripe - Confirmación de Pago (Webhook) [TEST]` para que escriban en
-    `Pagos` (`Tipo = Pago 1`, enlazada al `Cobros` del cliente) en vez de
-    los campos `[OBSOLETO]` de `Clientes`. Es la plantilla que después
-    reutiliza Pago 2 (mismo patrón de checkout → webhook → fila de `Pagos`).
+    `Pagos`~~ — **hecho (08/10)**. Ambos workflows crean/actualizan filas en
+    `Pagos` (`Tipo = Pago 1`), localizando la fila a parchear por
+    `filterByFormula` sobre `Stripe Checkout Session ID` (Airtable no tiene
+    "update por filtro"). Es la plantilla que reutiliza Pago 2.
 
-**Paso 4 — construir el workflow nuevo de n8n para Pago 2.**
-Sobre Airtable, portando (no copiando) la lógica ya probada del pipeline
-legacy (§7.1): cálculo del prorrateo, parámetros de la suscripción bridge,
-doble facturación Stripe+Holded, día 27 SEPA/28 Tarjeta. Incluye el enlace
-de pago copiable con expiración de 24h, el webhook que marca
-`Pagos.Estado = Pagado` (creando la fila `Tipo=Segundo pago` + una fila
-`Tipo=Extra` por cada ajuste aplicado, §6.5), y el webhook de
-`invoice.paid` que crea cada cuota recurrente al vuelo (§6.6).
+**Paso 4 — construir el workflow nuevo de n8n para Pago 2.** — **hecho
+(08/10)**, alcance acordado con Juanfra: hasta "Pago 2 confirmado +
+suscripción puente creada", sin tocar la transición puente→permanente ni
+el endpoint de Activar Campaña (ver §8). Dos workflows nuevos, en
+`Nemetea / JUANFRA NUEVOS FLUJOS`:
+
+- **`Stripe - Enviar Enlace de Pago (Pago 2) [TEST]`**
+  (`nDTuFSHGiFbGoBOp`, webhook `POST /enviar-enlace-pago-2`). Recibe
+  `{record_id, ajustes:{cc, montaje, penalizacion, ajusteManual,
+  ajusteManualConcepto, ajusteManualConceptoSelect}}`. Reutiliza
+  directamente el `ID Cliente Stripe` ya guardado en el `Cliente` por Pago
+  1 (responde con error si no existe — no vuelve a llamar al sub-flujo
+  `crear-cliente-stripe`, sería una llamada de red innecesaria). Calcula
+  cada línea (base 248,50€ + ajustes) aplicando el `Factor Impuesto` real
+  por entidad/Canarias y conversión EUR→USD vía `Tasa Aplicada` (mismo
+  criterio que Pago 1). Decisión de Juanfra: **`price_data` dinámico por
+  cliente**, no los Price ID fijos que usa el pipeline legacy. Como Stripe
+  no acepta líneas con importe negativo, un descuento se resta de las
+  líneas positivas antes de construir el checkout, y se crea **una sola
+  línea de Stripe** con el importe neto total (no una línea por ajuste);
+  la contabilidad fina sí queda itemizada en Airtable: una fila en `Pagos`
+  por concepto (`Tipo=Segundo pago` para la base, `Tipo=Extra` por cada
+  ajuste, con `Concepto de ajuste` y `Importe ajuste` con signo), todas
+  compartiendo el mismo `Stripe Checkout Session ID`. Caso "sin cobro" (neto
+  ≤ 0 tras descuentos): se salta Stripe y las filas quedan `Estado=Anulado`.
+- **`Stripe - Confirmación de Pago 2 (Webhook) [TEST]`**
+  (`Cla0BPONZfdsnKb3`, webhook `POST /stripe-pago2-confirmado`, endpoint de
+  Stripe nuevo creado en modo TEST, evento `checkout.session.completed`,
+  estilo de carga **snapshot** no thin — hace falta el objeto completo
+  dentro del evento). Verifica la firma (HMAC, credencial dedicada nueva
+  `TEST Stripe Webhook Secret Pago2`, **no reutilizar** la de SLU). Marca
+  `Estado=Pagado` en **todas** las filas de `Pagos` que comparten el
+  `Stripe Checkout Session ID` (puede haber varias, una por concepto).
+  Crea la **suscripción puente** (3 meses) portando el algoritmo real de
+  producción (`billing_cycle_anchor` ≈1 mes vista con hora aleatoria 1–6h
+  y capping de seguridad, `cancel_at` = ancla + 2 meses,
+  `metadata.bridge_phase=true`, `proration_behavior=none`,
+  `payment_behavior=default_incomplete`, método de pago por defecto tomado
+  del `payment_intent` del checkout). Importe de la cuota puente: en vez
+  de recalcular IVA/Contact Center/descuento por referido a mano, **lee
+  directamente el campo ya calculado por Airtable** `Total a Cobrar en
+  Moneda de Cobro (calc)` del `Cliente` — ese campo ya aplica todo. Avisa
+  por Slack en `#activación-de-campaña` (mismo canal que usa el pipeline
+  legacy para este evento).
+
+Pendiente de probar de principio a fin con un cliente de prueba real.
+Sigue abierto, explícitamente fuera de alcance por ahora: el webhook de
+`invoice.paid` que crea cada cuota recurrente al vuelo (§6.6) y la
+transición puente→permanente (§8).
 
 **Paso 5 — conectar escritura desde la interfaz.**
 Solo para lo que de verdad debe tocar un humano: checklist, contenido
