@@ -1570,9 +1570,11 @@ function renderCbDetail(){
 
     <div class="gate">
       <div class="gate-info">${cobrado
-        ? "<b>Pago 2 confirmado.</b> «Activar Campaña» todavía no está conectado de verdad — pendiente de construir (requiere decidir el modelo de Campañas en Airtable)."
+        ? (c.estadoCliente === "Activo"
+          ? `<b>Campaña activada</b>${c.fechaActivacion ? " el " + c.fechaActivacion : ""}.`
+          : "<b>Pago 2 confirmado.</b> Pulsa «Activar Campaña» para guardar la fecha de activación y marcar al cliente como Activo en Airtable.")
         : "Bloqueado hasta que el Pago 2 esté cobrado (lo confirma el webhook real de Stripe, no un botón)."}</div>
-      <button class="primary" disabled title="Pendiente de construir">Activar Campaña</button>
+      <button class="primary" id="cb-real-activar-campana" ${(!cobrado || c.estadoCliente === "Activo") ? "disabled" : ""}>${c.estadoCliente === "Activo" ? "Campaña activada ✓" : "Activar Campaña"}</button>
     </div>
 
     ${renderCalendarioCobroHTML(c)}
@@ -1645,6 +1647,34 @@ function renderCbDetail(){
       checkPago2Btn.disabled = true;
       const statusEl = detail.querySelector("#cb-real-check-pago2-status");
       if (statusEl) statusEl.textContent = "Comprobando…";
+      await cargarClientesReales();
+    });
+  }
+
+  const activarBtn = detail.querySelector("#cb-real-activar-campana");
+  if (activarBtn){
+    activarBtn.addEventListener("click", async ()=>{
+      activarBtn.disabled = true;
+      activarBtn.textContent = "Activando…";
+      try {
+        const res = await fetch(`${N8N_BASE}/onboarding-activar-campana`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id })
+        });
+        const data = await res.json();
+        if (!data.ok){
+          alert("Error: " + (data.error || "desconocido"));
+          activarBtn.disabled = false;
+          activarBtn.textContent = "Activar Campaña";
+          return;
+        }
+      } catch(e){
+        alert("Error de red: " + e.message);
+        activarBtn.disabled = false;
+        activarBtn.textContent = "Activar Campaña";
+        return;
+      }
       await cargarClientesReales();
     });
   }
