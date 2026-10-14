@@ -2118,9 +2118,17 @@ async function renderMtDetailReal(){
 
     <div class="section">
       <h3>Aviso al equipo de montaje</h3>
-      <div class="empty-step">
-        <p>Pendiente de construir — el aviso automático por Slack al equipo de montaje todavía no está conectado.</p>
-      </div>
+      <div class="slack-box-head" style="color:var(--ink-faint);">Vista previa — el envío automático a Slack todavía no está conectado</div>
+      <div class="slack-box">#montaje-campañas — Material completo, listo para arrancar
+Cliente: ${c.empresa}
+Contacto: ${c.contacto}
+Tipo de entrada: ${c.entrada}${c.cc ? " · Contact Center" : ""}
+Regalo de 20 días de Contact Center: ${regaloHead.text.replace("Regalo CC · ", "")}
+Entidad: ${c.entidad}
+Plazo de montaje: 10 días hábiles desde hoy
+Carpeta de material: (pendiente — la integración de Drive no está construida)
+→ Ficha completa en Airtable: https://airtable.com/appEZnB8ZDVAcBDAV/tbl6noqdseYfm4czi/${c.id}</div>
+      <p class="note-hint">El equipo no abrirá este CRM — trabajará a partir de este aviso y de lo que encuentre en la carpeta de Drive, cuando esa parte esté construida.</p>
     </div>
 
     <div class="section">
