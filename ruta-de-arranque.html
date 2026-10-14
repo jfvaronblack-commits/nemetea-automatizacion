@@ -2160,8 +2160,8 @@ Carpeta de material: (pendiente — la integración de Drive no está construida
     </div>
 
     <div class="gate">
-      <div class="gate-info">El paso a «Campaña lista» (Cobro y activación) todavía no está construido — se añadirá en otra sesión.</div>
-      <button class="primary" disabled title="Pendiente de construir">Campaña lista →</button>
+      <div class="gate-info">Cuando el equipo avise por Slack de que la campaña está lista, márcalo aquí — el cliente pasa a «Cobro y activación».</div>
+      <button class="primary" id="mt-campana-lista">Campaña lista →</button>
     </div>
   `;
 
@@ -2180,6 +2180,23 @@ Carpeta de material: (pendiente — la integración de Drive no está construida
         });
       } catch(err){ /* no bloquea */ }
       await renderMtDetailReal();
+    });
+  }
+  const campanaBtn = detail.querySelector("#mt-campana-lista");
+  if (campanaBtn){
+    campanaBtn.addEventListener("click", async ()=>{
+      campanaBtn.disabled = true;
+      campanaBtn.textContent = "Guardando…";
+      try {
+        await fetch(`${N8N_BASE}/onboarding-campana-lista`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id }),
+        });
+      } catch(err){ /* se refleja igualmente al recargar */ }
+      await cargarClientesMontaje();
+      await cargarClientesReales();
+      document.getElementById("tabbtn-cobro").click();
     });
   }
 }
