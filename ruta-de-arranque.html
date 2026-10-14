@@ -2058,6 +2058,8 @@ function renderMtListReal(){
     const card = document.createElement("button");
     card.className = "card";
     card.setAttribute("aria-current", c.id === mtSelectedReal);
+    const regalo = regaloChipReal(c);
+    const penal = penalizacionChipReal(c);
     card.innerHTML = `
       <div class="card-top">
         <span class="card-name">${c.empresa}</span>
@@ -2065,6 +2067,10 @@ function renderMtListReal(){
       </div>
       <div class="card-meta"><span>${c.contacto}</span></div>
       <div class="card-meta"><span>${c.entrada} · ${c.entidad}</span></div>
+      <div class="card-meta">
+        <span class="chip ${regalo.cls}">${regalo.text}</span>
+        ${penal.text !== "Sin penalización" ? `<span class="chip ${penal.cls}">${penal.text}</span>` : ""}
+      </div>
     `;
     card.addEventListener("click", ()=>{ mtSelectedReal = c.id; renderMtListReal(); renderMtDetailReal(); });
     list.appendChild(card);
@@ -2091,6 +2097,12 @@ async function renderMtDetailReal(){
     if (data.ok) historial = data.historial || [];
   } catch(e){ /* se muestra vacío si falla */ }
 
+  const regaloHead = regaloChipReal(c);
+  const penalHead = penalizacionChipReal(c);
+  const diasEntrega = (c.carpetaEnviadaFecha && c.materialCompletoFecha)
+    ? Math.round((new Date(c.materialCompletoFecha+"T00:00:00") - new Date(c.carpetaEnviadaFecha+"T00:00:00")) / 86400000)
+    : null;
+
   detail.innerHTML = `
     <div class="d-head">
       <div>
@@ -2105,6 +2117,29 @@ async function renderMtDetailReal(){
     <div class="date-line">Compromiso simétrico de Nemetea: <b>10 días hábiles</b> desde que el cliente entregó el material completo hasta tener la campaña montada. (El contador de días hábiles todavía no está construido.)</div>
 
     <div class="section">
+      <h3>Aviso al equipo de montaje</h3>
+      <div class="empty-step">
+        <p>Pendiente de construir — el aviso automático por Slack al equipo de montaje todavía no está conectado.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Heredado de Onboarding</h3>
+      <div class="d-chips">
+        <span class="chip ${regaloHead.cls}">${regaloHead.text}</span>
+        <span class="chip ${penalHead.cls}">${penalHead.text}</span>
+      </div>
+      <div class="date-line" style="margin-top:8px;">Carpeta enviada <b>${fmtFechaISO(c.carpetaEnviadaFecha)}</b> → material completo <b>${fmtFechaISO(c.materialCompletoFecha)}</b>${diasEntrega !== null ? ` (${diasEntrega} días)` : ""}. Micaela no vuelve a introducir estos datos — vienen del mismo registro.</div>
+    </div>
+
+    <div class="section">
+      <h3>Envío de contenido al cliente</h3>
+      <div class="empty-step">
+        <p>Pendiente de construir — el envío de la landing y los vídeos por WhatsApp todavía no está conectado.</p>
+      </div>
+    </div>
+
+    <div class="section">
       <h3>Historial de comunicación</h3>
       <ul class="history">
         ${historial.length ? historial.map(h=>`<li><time>${new Date(h.when).toLocaleString("es-ES",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</time>${h.note}</li>`).join("") : '<li><time>—</time>Sin comentarios todavía.</li>'}
@@ -2117,7 +2152,7 @@ async function renderMtDetailReal(){
     </div>
 
     <div class="gate">
-      <div class="gate-info">El envío de contenido por WhatsApp, el aviso a Slack del equipo de montaje y el paso a «Campaña lista» todavía no están construidos — se añadirán en otra sesión.</div>
+      <div class="gate-info">El paso a «Campaña lista» (Cobro y activación) todavía no está construido — se añadirá en otra sesión.</div>
       <button class="primary" disabled title="Pendiente de construir">Campaña lista →</button>
     </div>
   `;
