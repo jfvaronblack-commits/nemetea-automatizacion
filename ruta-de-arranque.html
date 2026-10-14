@@ -1848,6 +1848,7 @@ async function renderObDetailReal(){
   } catch(e){ /* se muestra vacío si falla */ }
 
   const estado = estadoPlazoReal(c);
+  const materialCompleto = c.checklist.every(i=>i.done);
 
   let plazoBlock;
   if (!c.carpetaEnviadaFecha){
@@ -1941,7 +1942,7 @@ async function renderObDetailReal(){
 
     <div class="gate">
       <div class="gate-info">Cuando Gisela/Micaela confirman que <b>fotos, vídeos y formulario</b> están completos, el cliente pasa a <b>Material Completo</b> — se avisa por Slack al equipo de montaje y arranca el compromiso simétrico de Nemetea: <b>10 días hábiles</b> para tener la campaña montada.</div>
-      <button class="primary" id="ob-advance" disabled title="Pendiente de construir — el modelo de datos de Montaje todavía no existe en Airtable">Marcar Material Completo</button>
+      <button class="primary" id="ob-advance" ${materialCompleto ? "" : "disabled"} title="${materialCompleto ? "" : "Se habilita cuando los 4 items del checklist están marcados"}">Marcar Material Completo</button>
     </div>
   `;
 
@@ -1990,6 +1991,23 @@ async function renderObDetailReal(){
         });
       } catch(err){ /* se refleja igualmente al recargar */ }
       await cargarClientesOnboarding();
+    });
+  }
+  const advBtn = detail.querySelector("#ob-advance");
+  if (advBtn && !advBtn.disabled){
+    advBtn.addEventListener("click", async ()=>{
+      advBtn.disabled = true;
+      advBtn.textContent = "Guardando…";
+      const texto = `Material completo confirmado por Micaela (${new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"})}). Pendiente de pasar a Montaje — esa fase todavía no está conectada.`;
+      try {
+        await fetch(`${N8N_BASE}/onboarding-nota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id, texto }),
+        });
+      } catch(err){ /* no bloquea */ }
+      advBtn.textContent = "✓ Material completo";
+      await renderObDetailReal();
     });
   }
 }
