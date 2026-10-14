@@ -1702,8 +1702,299 @@ function renderPmDetail(){
   }
 }
 
-renderObList();
-renderObDetail();
+// ---------------------------------------------------------------
+// Onboarding — CONECTADA DE VERDAD a Airtable/n8n (ya no es demo).
+// La lista y el detalle se leen del webhook real "lista-onboarding";
+// marcar carpeta enviada, marcar material recibido y guardar nota
+// llaman también a webhooks reales. El historial de comunicación usa
+// los comentarios nativos de la ficha del cliente en Airtable.
+// "Marcar Material Completo" (paso a Montaje) sigue sin construir —
+// el modelo de datos de Montaje aún no existe.
+// ---------------------------------------------------------------
+let obClientesReales = [];
+let obSelectedReal = null;
+let obLoading = true;
+let obError = null;
+
+function diasDesde(fechaISO){
+  if (!fechaISO) return null;
+  const d = new Date(fechaISO + "T00:00:00");
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  return Math.round((hoy - d) / 86400000);
+}
+function fmtFechaISO(fechaISO){
+  if (!fechaISO) return "—";
+  const d = new Date(fechaISO + "T00:00:00");
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
+function diasRestantesReal(c){
+  if (!c.carpetaEnviadaFecha) return null;
+  return PLAZO_BASE - diasDesde(c.carpetaEnviadaFecha);
+}
+function estadoPlazoReal(c){
+  if (!c.carpetaEnviadaFecha) return { text: "Carpeta sin enviar", cls: "warm" };
+  const done = c.checklist.filter(i=>i.done).length;
+  if (done === c.checklist.length) return { text: "Material entregado", cls: "ok" };
+  const restan = diasRestantesReal(c);
+  if (restan < 0) return { text: "Plazo vencido", cls: "critical" };
+  if (restan <= 3) return { text: `Vence en ${restan} d`, cls: "critical" };
+  if (restan <= 7) return { text: `Vence en ${restan} d`, cls: "warm" };
+  return { text: `Vence en ${restan} d`, cls: "ok" };
+}
+function calificaRegaloCCReal(c){
+  if (!c.carpetaEnviadaFecha) return null;
+  return diasDesde(c.carpetaEnviadaFecha) <= 7;
+}
+function regaloChipReal(c){
+  const r = calificaRegaloCCReal(c);
+  if (r === null) return { text: "Regalo CC · pendiente", cls: "pending" };
+  return r ? { text: "Regalo CC · 20 días gratis", cls: "ok" } : { text: "Regalo CC · no aplica", cls: "pending" };
+}
+function penalizacionInfoReal(c){
+  if (!c.carpetaEnviadaFecha) return null;
+  if (diasDesde(c.carpetaEnviadaFecha) <= PLAZO_BASE) return null;
+  return { entidad: c.entidad, monto: penalizacionMonto(c.entidad) };
+}
+function penalizacionChipReal(c){
+  const p = penalizacionInfoReal(c);
+  if (!p) return { text: "Sin penalización", cls: "ok" };
+  return { text: `Penalización ${p.monto} · ${p.entidad}`, cls: "critical" };
+}
+
+async function cargarClientesOnboarding(){
+  obLoading = true;
+  obError = null;
+  renderObListReal();
+  await renderObDetailReal();
+  try {
+    const res = await fetch(`${N8N_BASE}/lista-onboarding`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    obClientesReales = await res.json();
+  } catch(e){
+    obClientesReales = [];
+    obError = e.message || "Error de red";
+  }
+  obLoading = false;
+  if (!obClientesReales.some(c=>c.id===obSelectedReal)) obSelectedReal = obClientesReales[0]?.id || null;
+  renderObListReal();
+  await renderObDetailReal();
+}
+
+function renderObListReal(){
+  const list = document.getElementById("ob-list");
+  list.innerHTML = "";
+  if (obLoading){
+    list.innerHTML = `<p class="empty-step"><span>Cargando clientes reales desde Airtable…</span></p>`;
+    return;
+  }
+  if (obError){
+    list.innerHTML = `<p class="empty-step"><span>Error cargando clientes: ${obError}</span></p>`;
+    return;
+  }
+  obClientesReales.forEach(c=>{
+    const estado = estadoPlazoReal(c);
+    const regalo = regaloChipReal(c);
+    const penal = penalizacionChipReal(c);
+    const done = c.checklist.filter(i=>i.done).length;
+    const pct = Math.round(done / c.checklist.length * 100);
+    const carpetaTxt = !c.carpetaEnviadaFecha
+      ? "Carpeta: pendiente de enviar"
+      : `Carpeta enviada · ${fmtFechaISO(c.carpetaEnviadaFecha)}`;
+    const card = document.createElement("button");
+    card.className = "card";
+    card.setAttribute("aria-current", c.id === obSelectedReal);
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${c.empresa}</span>
+        <span class="chip ${estado.cls}">${estado.text}</span>
+      </div>
+      <div class="card-meta" style="font-weight:500; color:var(--ink);">
+        <span>${c.entrada} · ${c.entidad}</span>
+      </div>
+      <div class="card-meta">
+        <span>${c.cc ? "Contact Center" : "Sin Contact Center"}</span>
+      </div>
+      <div class="card-meta"><span class="num">${carpetaTxt}</span></div>
+      <div class="card-meta">
+        <span class="chip ${regalo.cls}">${regalo.text}</span>
+        ${penal.text !== "Sin penalización" ? `<span class="chip ${penal.cls}">${penal.text}</span>` : ""}
+      </div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+    `;
+    card.addEventListener("click", ()=>{ obSelectedReal = c.id; renderObListReal(); renderObDetailReal(); });
+    list.appendChild(card);
+  });
+  if (!obLoading && !obError && !obClientesReales.length){
+    list.innerHTML = `<p class="empty-step"><span>No hay clientes con Pago 1 cobrado todavía.</span></p>`;
+  }
+}
+
+async function renderObDetailReal(){
+  const detail = document.getElementById("ob-detail");
+  const c = obClientesReales.find(x=>x.id===obSelectedReal);
+  if (!c){
+    detail.innerHTML = obLoading
+      ? `<p class="empty-step"><span>Cargando…</span></p>`
+      : (obError ? `<p class="empty-step"><span>Error: ${obError}</span></p>` : `<p class="empty-step"><span>No hay clientes en Onboarding.</span></p>`);
+    return;
+  }
+
+  let historial = [];
+  try {
+    const res = await fetch(`${N8N_BASE}/onboarding-historial?record_id=${encodeURIComponent(c.id)}`);
+    const data = await res.json();
+    if (data.ok) historial = data.historial || [];
+  } catch(e){ /* se muestra vacío si falla */ }
+
+  const estado = estadoPlazoReal(c);
+
+  let plazoBlock;
+  if (!c.carpetaEnviadaFecha){
+    plazoBlock = `
+      <div class="date-line">Pago 1 confirmado el <b>${fmtFechaISO(c.pago1Fecha)}</b>. El plazo de 21 días naturales arranca en el momento en que se envía la carpeta de Drive — todavía no corre.</div>
+      <div class="empty-step" style="margin-top:12px;">
+        <p>Micaela confirma que la carpeta de Drive ya se ha compartido con el cliente.</p>
+        <button class="ghost" id="ob-send-carpeta">Marcar carpeta enviada hoy</button>
+      </div>
+    `;
+  } else {
+    const restan = diasRestantesReal(c);
+    const transcurrido = diasDesde(c.carpetaEnviadaFecha);
+    const pctTrack = Math.min(100, Math.max(0, Math.round(transcurrido / PLAZO_BASE * 100)));
+    const regalo = calificaRegaloCCReal(c);
+    const penal = penalizacionMonto(c.entidad);
+    const limiteFecha = new Date(c.carpetaEnviadaFecha + "T00:00:00");
+    limiteFecha.setDate(limiteFecha.getDate() + PLAZO_BASE);
+
+    let penalBlock = "";
+    if (restan < 0){
+      penalBlock = `<div class="notebox critical"><b>Plazo de 21 días naturales superado.</b> Corresponde penalización de <b>${penal}</b> (${c.entidad}) si el cliente pide prórroga voluntaria de otros 21 días.</div>`;
+    }
+
+    plazoBlock = `
+      <div class="date-line">Carpeta enviada el <b>${fmtFechaISO(c.carpetaEnviadaFecha)}</b> · plazo formal del contrato: <b class="num">21 días naturales</b>, exclusivamente vía Drive.</div>
+      <div class="timeline" style="margin-top:10px;">
+        <div class="track"><i style="width:${pctTrack}%"></i></div>
+        <div class="labels">
+          <span>Enviada <b class="num">${fmtFechaISO(c.carpetaEnviadaFecha)}</b></span>
+          <span>Hoy <b class="num">${new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"short"})}</b></span>
+          <span>Límite <b class="num">${limiteFecha.toLocaleDateString("es-ES",{day:"2-digit",month:"short"})}</b></span>
+        </div>
+      </div>
+      <div class="gift-note ${regalo ? '' : 'off'}">
+        ${regalo
+          ? "Dentro de la 1ª semana desde el envío de la carpeta — califica para el regalo de 20 días de Contact Center."
+          : "Fuera de la ventana de 7 días desde el envío de la carpeta — ya no aplica el regalo de 20 días de Contact Center."}
+      </div>
+      ${penalBlock}
+    `;
+  }
+
+  const regaloHead = regaloChipReal(c);
+  const penalHead = penalizacionChipReal(c);
+  detail.innerHTML = `
+    <div class="d-head">
+      <div>
+        <div class="d-name">${c.empresa}</div>
+        <div class="d-sub">${c.contacto} · Tipo de entrada: ${c.entrada} · Entidad: ${c.entidad}</div>
+      </div>
+      <div class="d-chips">
+        <span class="chip ${estado.cls}">${estado.text}</span>
+        ${c.cc ? '<span class="chip ok">Contact Center</span>' : ''}
+      </div>
+    </div>
+    <div class="d-chips" style="margin-top:8px;">
+      <span class="chip ${regaloHead.cls}">${regaloHead.text}</span>
+      <span class="chip ${penalHead.cls}">${penalHead.text}</span>
+    </div>
+
+    <div class="section">
+      <h3>Plazo de documentación</h3>
+      ${plazoBlock}
+    </div>
+
+    <div class="section">
+      <h3>Material recibido</h3>
+      <div class="checklist">
+        ${c.checklist.map((item, i)=>`
+          <label class="check-row">
+            <input type="checkbox" data-campo="${item.campo}" ${item.done ? "checked" : ""}>
+            <span class="check-label">${item.label}</span>
+            <span class="check-hint">${item.done ? "Recibido" : "Pendiente"}</span>
+          </label>
+        `).join("")}
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Historial de comunicación</h3>
+      <ul class="history">
+        ${historial.length ? historial.map(h=>`<li><time>${new Date(h.when).toLocaleString("es-ES",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</time>${h.note}</li>`).join("") : '<li><time>—</time>Sin comentarios todavía.</li>'}
+      </ul>
+      <div class="note-form">
+        <textarea id="ob-note-input" placeholder="Escribe aquí lo que has hablado o hecho con el cliente..." rows="1"></textarea>
+        <button class="ghost" id="ob-note-save">Guardar nota</button>
+      </div>
+      <p class="note-hint">Esto es la caja de comentarios nativa de la ficha en Airtable — no un campo de texto aparte. Cualquiera del equipo la ve sin tener que preguntar.</p>
+    </div>
+
+    <div class="gate">
+      <div class="gate-info">Cuando Gisela/Micaela confirman que <b>fotos, vídeos y formulario</b> están completos, el cliente pasa a <b>Material Completo</b> — se avisa por Slack al equipo de montaje y arranca el compromiso simétrico de Nemetea: <b>10 días hábiles</b> para tener la campaña montada.</div>
+      <button class="primary" id="ob-advance" disabled title="Pendiente de construir — el modelo de datos de Montaje todavía no existe en Airtable">Marcar Material Completo</button>
+    </div>
+  `;
+
+  detail.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+    cb.addEventListener("change", async (e)=>{
+      const campo = e.target.dataset.campo;
+      const valor = e.target.checked;
+      e.target.disabled = true;
+      try {
+        await fetch(`${N8N_BASE}/onboarding-material`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id, campo, valor }),
+        });
+      } catch(err){ /* se refleja igualmente al recargar */ }
+      await cargarClientesOnboarding();
+    });
+  });
+  const noteBtn = detail.querySelector("#ob-note-save");
+  const noteInput = detail.querySelector("#ob-note-input");
+  if (noteBtn){
+    noteBtn.addEventListener("click", async ()=>{
+      const texto = noteInput.value.trim();
+      if (!texto) return;
+      noteBtn.disabled = true;
+      try {
+        await fetch(`${N8N_BASE}/onboarding-nota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id, texto }),
+        });
+      } catch(err){ /* no bloquea */ }
+      await renderObDetailReal();
+    });
+  }
+  const sendBtn = detail.querySelector("#ob-send-carpeta");
+  if (sendBtn){
+    sendBtn.addEventListener("click", async ()=>{
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Guardando…";
+      try {
+        await fetch(`${N8N_BASE}/onboarding-marcar-carpeta`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id }),
+        });
+      } catch(err){ /* se refleja igualmente al recargar */ }
+      await cargarClientesOnboarding();
+    });
+  }
+}
+
+cargarClientesOnboarding();
 renderMtList();
 renderMtDetail();
 cargarClientesReales();
