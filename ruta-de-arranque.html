@@ -351,6 +351,34 @@
     border-top:1px solid var(--line); padding-top:16px;
   }
 
+  /* ---------- login ---------- */
+  #login-screen{
+    position:fixed; inset:0; background:var(--paper); display:flex;
+    align-items:center; justify-content:center; z-index:1000; padding:24px;
+  }
+  #login-screen.hidden{ display:none; }
+  .login-card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); padding:32px 30px; max-width:360px; width:100%;
+  }
+  .login-card .mark{ font-family:"Fraunces"; font-size:1.3rem; font-weight:600; color:var(--ink); }
+  .login-card .sub{ display:block; font-size:0.82rem; color:var(--ink-dim); margin-top:2px; margin-bottom:22px; }
+  .login-card label{ display:block; font-size:0.82rem; color:var(--ink-dim); margin-bottom:6px; margin-top:14px; }
+  .login-card input{
+    width:100%; font-family:"IBM Plex Sans"; font-size:0.92rem; padding:10px 12px;
+    border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink);
+    box-sizing:border-box;
+  }
+  .login-card button{ width:100%; margin-top:22px; }
+  .login-error{ color:var(--critical); font-size:0.82rem; margin-top:12px; min-height:1.2em; }
+  #app-root.hidden{ display:none; }
+  .logout-btn{
+    background:none; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:"IBM Plex Sans"; font-size:0.78rem; padding:6px 12px; border-radius:7px;
+    cursor:pointer; margin-left:auto;
+  }
+  .logout-btn:hover{ color:var(--ink); border-color:var(--ink-dim); }
+
   /* ---------- aviso de Slack ---------- */
   .slack-box{
     margin-top:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.78rem;
@@ -422,11 +450,27 @@
 </head>
 <body>
 
+  <div id="login-screen">
+    <form class="login-card" id="login-form" autocomplete="on">
+      <span class="mark">Ruta de Arranque</span>
+      <span class="sub">Nemetea · acceso privado</span>
+      <label for="login-user">Usuario</label>
+      <input type="email" id="login-user" name="username" autocomplete="username" required>
+      <label for="login-pass">Contraseña</label>
+      <input type="password" id="login-pass" name="password" autocomplete="current-password" required>
+      <button type="submit" class="primary">Entrar</button>
+      <div class="login-error" id="login-error"></div>
+    </form>
+  </div>
+
+  <div id="app-root" class="hidden">
+
   <div class="topbar">
     <div class="brand">
       <span class="mark">Ruta de Arranque</span>
       <span class="sub">Nemetea · Onboarding → Montaje</span>
     </div>
+    <button type="button" class="logout-btn" id="logout-btn">Cerrar sesión</button>
     <span class="mockbadge">Diseño · datos de ejemplo</span>
   </div>
   <p class="subhead">Del pago inicial confirmado hasta el cierre del primer mes de campaña. Cada cliente vive en un único registro — cambia de pestaña solo cuando cambia su fase, sin copiarlo a mano de un sitio a otro.</p>
@@ -487,7 +531,61 @@
 
   <p class="foot-note">Simulador de diseño — sin conexión a Airtable todavía. Cada campo de aquí ya está identificado en la tabla de mapeo (Clientes / Campañas / Assets / Actividades) que se revisó antes de maquetar esto.</p>
 
+  </div>
+
 <script>
+// ---------------------------------------------------------------
+// Login — puerta de entrada del panel. Usuario/contraseña fijos,
+// comprobados por hash SHA-256 (no quedan en claro en el código fuente).
+// No protege los webhooks de n8n, solo el acceso a este panel.
+// ---------------------------------------------------------------
+const AUTH_USER = "valdezmora.mmicaela@gmail.com";
+const AUTH_PASS_HASH = "46d8090cf7abd9518485ae1adcf56edbb559524c9054090db13acb2cf537aecd";
+const AUTH_STORAGE_KEY = "rutaArranqueAuth";
+
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function showApp(){
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app-root").classList.remove("hidden");
+}
+
+function showLogin(){
+  document.getElementById("app-root").classList.add("hidden");
+  document.getElementById("login-screen").classList.remove("hidden");
+}
+
+(function initAuth(){
+  if (localStorage.getItem(AUTH_STORAGE_KEY) === "ok"){
+    showApp();
+  } else {
+    showLogin();
+  }
+
+  document.getElementById("login-form").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const user = document.getElementById("login-user").value.trim().toLowerCase();
+    const pass = document.getElementById("login-pass").value;
+    const errorEl = document.getElementById("login-error");
+    const hash = await sha256Hex(pass);
+    if (user === AUTH_USER && hash === AUTH_PASS_HASH){
+      localStorage.setItem(AUTH_STORAGE_KEY, "ok");
+      errorEl.textContent = "";
+      showApp();
+    } else {
+      errorEl.textContent = "Usuario o contraseña incorrectos.";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", ()=>{
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    showLogin();
+  });
+})();
+
 // ---------------------------------------------------------------
 // Datos de ejemplo (no son clientes reales de Nemetea)
 // ---------------------------------------------------------------
