@@ -1998,7 +1998,137 @@ async function renderObDetailReal(){
     advBtn.addEventListener("click", async ()=>{
       advBtn.disabled = true;
       advBtn.textContent = "Guardando…";
-      const texto = `Material completo confirmado por Micaela (${new Date().toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"})}). Pendiente de pasar a Montaje — esa fase todavía no está conectada.`;
+      try {
+        await fetch(`${N8N_BASE}/onboarding-material-completo`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id }),
+        });
+      } catch(err){ /* no bloquea */ }
+      advBtn.textContent = "✓ Material completo";
+      await cargarClientesOnboarding();
+      await cargarClientesMontaje();
+    });
+  }
+}
+
+// ---------------------------------------------------------------
+// Montaje de campaña — CONECTADA DE VERDAD, versión mínima (sin SLA
+// de días hábiles, sin envío de contenido por WhatsApp ni aviso a
+// Slack todavía — eso se construye en otra sesión con más tiempo).
+// Lista los clientes con Fase = Montaje y reutiliza el mismo
+// historial por comentarios de Airtable que Onboarding.
+// ---------------------------------------------------------------
+let mtClientesReales = [];
+let mtSelectedReal = null;
+let mtLoading = true;
+let mtError = null;
+
+async function cargarClientesMontaje(){
+  mtLoading = true;
+  mtError = null;
+  renderMtListReal();
+  await renderMtDetailReal();
+  try {
+    const res = await fetch(`${N8N_BASE}/lista-montaje`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    mtClientesReales = await res.json();
+  } catch(e){
+    mtClientesReales = [];
+    mtError = e.message || "Error de red";
+  }
+  mtLoading = false;
+  if (!mtClientesReales.some(c=>c.id===mtSelectedReal)) mtSelectedReal = mtClientesReales[0]?.id || null;
+  renderMtListReal();
+  await renderMtDetailReal();
+}
+
+function renderMtListReal(){
+  const list = document.getElementById("mt-list");
+  list.innerHTML = "";
+  if (mtLoading){
+    list.innerHTML = `<p class="empty-step"><span>Cargando clientes reales desde Airtable…</span></p>`;
+    return;
+  }
+  if (mtError){
+    list.innerHTML = `<p class="empty-step"><span>Error cargando clientes: ${mtError}</span></p>`;
+    return;
+  }
+  mtClientesReales.forEach(c=>{
+    const card = document.createElement("button");
+    card.className = "card";
+    card.setAttribute("aria-current", c.id === mtSelectedReal);
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${c.empresa}</span>
+        <span class="chip ok">Material completo · ${fmtFechaISO(c.materialCompletoFecha)}</span>
+      </div>
+      <div class="card-meta"><span>${c.contacto}</span></div>
+      <div class="card-meta"><span>${c.entrada} · ${c.entidad}</span></div>
+    `;
+    card.addEventListener("click", ()=>{ mtSelectedReal = c.id; renderMtListReal(); renderMtDetailReal(); });
+    list.appendChild(card);
+  });
+  if (!mtLoading && !mtError && !mtClientesReales.length){
+    list.innerHTML = `<p class="empty-step"><span>No hay clientes en montaje ahora mismo.</span></p>`;
+  }
+}
+
+async function renderMtDetailReal(){
+  const detail = document.getElementById("mt-detail");
+  const c = mtClientesReales.find(x=>x.id===mtSelectedReal);
+  if (!c){
+    detail.innerHTML = mtLoading
+      ? `<p class="empty-step"><span>Cargando…</span></p>`
+      : (mtError ? `<p class="empty-step"><span>Error: ${mtError}</span></p>` : `<p class="empty-step"><span>No hay clientes en montaje ahora mismo.</span></p>`);
+    return;
+  }
+
+  let historial = [];
+  try {
+    const res = await fetch(`${N8N_BASE}/onboarding-historial?record_id=${encodeURIComponent(c.id)}`);
+    const data = await res.json();
+    if (data.ok) historial = data.historial || [];
+  } catch(e){ /* se muestra vacío si falla */ }
+
+  detail.innerHTML = `
+    <div class="d-head">
+      <div>
+        <div class="d-name">${c.empresa}</div>
+        <div class="d-sub">${c.contacto} · Tipo de entrada: ${c.entrada} · Entidad: ${c.entidad}</div>
+      </div>
+      <div class="d-chips">
+        <span class="chip ok">Material completo · ${fmtFechaISO(c.materialCompletoFecha)}</span>
+        ${c.cc ? '<span class="chip ok">Contact Center</span>' : ''}
+      </div>
+    </div>
+    <div class="date-line">Compromiso simétrico de Nemetea: <b>10 días hábiles</b> desde que el cliente entregó el material completo hasta tener la campaña montada. (El contador de días hábiles todavía no está construido.)</div>
+
+    <div class="section">
+      <h3>Historial de comunicación</h3>
+      <ul class="history">
+        ${historial.length ? historial.map(h=>`<li><time>${new Date(h.when).toLocaleString("es-ES",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</time>${h.note}</li>`).join("") : '<li><time>—</time>Sin comentarios todavía.</li>'}
+      </ul>
+      <div class="note-form">
+        <textarea id="mt-note-input" placeholder="Escribe aquí lo que has hablado o hecho con el cliente..." rows="1"></textarea>
+        <button class="ghost" id="mt-note-save">Guardar nota</button>
+      </div>
+      <p class="note-hint">Mismo historial único del cliente que ya se usaba en Onboarding — no se abre un cuaderno aparte.</p>
+    </div>
+
+    <div class="gate">
+      <div class="gate-info">El envío de contenido por WhatsApp, el aviso a Slack del equipo de montaje y el paso a «Campaña lista» todavía no están construidos — se añadirán en otra sesión.</div>
+      <button class="primary" disabled title="Pendiente de construir">Campaña lista →</button>
+    </div>
+  `;
+
+  const noteBtn = detail.querySelector("#mt-note-save");
+  const noteInput = detail.querySelector("#mt-note-input");
+  if (noteBtn){
+    noteBtn.addEventListener("click", async ()=>{
+      const texto = noteInput.value.trim();
+      if (!texto) return;
+      noteBtn.disabled = true;
       try {
         await fetch(`${N8N_BASE}/onboarding-nota`, {
           method: "POST",
@@ -2006,15 +2136,13 @@ async function renderObDetailReal(){
           body: JSON.stringify({ record_id: c.id, texto }),
         });
       } catch(err){ /* no bloquea */ }
-      advBtn.textContent = "✓ Material completo";
-      await renderObDetailReal();
+      await renderMtDetailReal();
     });
   }
 }
 
 cargarClientesOnboarding();
-renderMtList();
-renderMtDetail();
+cargarClientesMontaje();
 cargarClientesReales();
 renderPmList();
 renderPmDetail();
