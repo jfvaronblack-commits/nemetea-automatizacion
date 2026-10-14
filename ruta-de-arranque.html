@@ -1529,7 +1529,13 @@ function renderCbDetail(){
               <button type="button" id="cb-real-copy-link">Copiar</button>
             </div>
           ` : ""}
-          <p class="note-hint">Esto llama de verdad al webhook "Stripe - Enviar Enlace de Pago (Pago 2)" y crea una sesión real de Stripe Checkout en modo TEST. Pulsa "↻ Refrescar" arriba después de pagar en Stripe para ver el estado actualizado.</p>
+          ${enviado ? `
+            <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="ghost" id="cb-real-check-pago2" style="font-size:12px; padding:8px 14px;">↻ Comprobar estado del pago</button>
+              <span class="foot-note" id="cb-real-check-pago2-status"></span>
+            </div>
+          ` : ""}
+          <p class="note-hint">Esto llama de verdad al webhook "Stripe - Enviar Enlace de Pago (Pago 2)" y crea una sesión real de Stripe Checkout en modo TEST.</p>
         </div>
       `}
     </div>
@@ -1599,6 +1605,16 @@ function renderCbDetail(){
         sendBtn.textContent = "Enviar enlace de pago →";
         return;
       }
+      await cargarClientesReales();
+    });
+  }
+
+  const checkPago2Btn = detail.querySelector("#cb-real-check-pago2");
+  if (checkPago2Btn){
+    checkPago2Btn.addEventListener("click", async ()=>{
+      checkPago2Btn.disabled = true;
+      const statusEl = detail.querySelector("#cb-real-check-pago2-status");
+      if (statusEl) statusEl.textContent = "Comprobando…";
       await cargarClientesReales();
     });
   }
