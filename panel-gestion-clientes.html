@@ -191,6 +191,41 @@
   .campaign-card .cspend{ font-size:0.74rem; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:7px; }
   .campaign-card .cactions{ display:flex; gap:6px; }
 
+  .quality-badge{ font-size:0.66rem; font-weight:700; padding:3px 9px; border-radius:999px; display:inline-flex;
+    align-items:center; gap:4px; vertical-align:middle; margin-left:8px; }
+  .quality-badge.good{ background:var(--accent-soft); color:var(--accent); }
+  .quality-badge.warn{ background:var(--warm-soft); color:var(--warm); }
+
+  .verify-btn{ margin-top:6px; }
+  .verify-result{ font-size:0.74rem; margin-top:6px; line-height:1.4; padding:7px 9px; border-radius:7px; display:none; }
+  .verify-result.show{ display:block; }
+  .verify-result.ok{ background:var(--accent-soft); color:var(--accent); }
+  .verify-result.bad{ background:var(--critical-soft); color:var(--critical); }
+
+  .alert-meta{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-left:30px; }
+  .alert-meta select{ font-size:0.74rem; padding:5px 8px; border-radius:6px; border:1px solid var(--line);
+    background:var(--paper-raised); color:var(--ink); font-family:"IBM Plex Sans"; }
+  .alert-status{ font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2px 9px;
+    border-radius:999px; background:var(--paper-raised); border:1px solid var(--line); color:var(--ink-dim); }
+
+  .contract-card{ margin:18px 20px 20px; border:1px solid var(--accent); background:var(--accent-soft); border-radius:10px;
+    padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .contract-card .cl{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .contract-card .cico{ font-size:1.3rem; flex:none; }
+  .contract-card .ct .t{ font-size:0.86rem; font-weight:600; color:var(--accent); }
+  .contract-card .ct .d{ font-size:0.74rem; color:var(--ink-dim); margin-top:2px; }
+  .contract-card .cr{ display:flex; align-items:center; gap:10px; flex:none; }
+  .contract-card a.ghost{ text-decoration:none; display:inline-flex; align-items:center; }
+
+  .activity-list{ display:flex; flex-direction:column; gap:0; }
+  .activity-item{ display:flex; align-items:flex-start; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); }
+  .activity-item:last-child{ border-bottom:none; }
+  .activity-item .ch{ font-size:0.64rem; font-weight:700; text-transform:uppercase; padding:2px 8px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); flex:none; margin-top:1px; }
+  .activity-item .cd{ font-family:"IBM Plex Mono"; font-size:0.7rem; color:var(--ink-dim); flex:none; margin-top:2px; }
+  .activity-item .ct{ font-size:0.82rem; }
+  .activity-item .ct .res{ color:var(--ink-dim); font-size:0.76rem; margin-top:1px; }
+
   .mod-body{ padding:18px 20px 20px; display:flex; flex-direction:column; gap:14px; }
   .mod-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0;
     border-bottom:1px solid var(--line); }
@@ -262,7 +297,7 @@
         <div class="search-box"><input type="text" id="searchBox" placeholder="Buscar por nombre o email..."></div>
         <div class="filter-row">
           <span class="chip active" data-filter="todos">Todos</span>
-          <span class="chip" data-filter="alerta">Con impago</span>
+          <span class="chip" data-filter="alerta">Con alerta</span>
           <span class="chip" data-filter="ok">Al día</span>
         </div>
       </div>
@@ -332,7 +367,12 @@ const CLIENTES = [
     contacto:{ contacto1:'Nadia Ferrer Solís', whatsapp:'+34 611 220 384', ciudad:'Murcia', pais:'España',
       cif:'B-45118302', nombreFiscal:'Espacio Raíz Fisioterapia SL', direccion:'Calle Mayor 14, 3ºB, 30001, Murcia',
       comercial:'Camila Duarte', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaFirma:'09/03/2026', url:'#' },
+    contrato:{ firmado:true, fechaEnvio:'08/03/2026', fechaFirma:'09/03/2026', revisado:true, url:'#' },
+    alertas:[],
+    actividades:[
+      {fecha:'27/08/2026 09:12', tipo:'Email', detalle:'Recibo de cobro — ciclo natural agosto', resultado:'Enviado'},
+      {fecha:'09/03/2026 18:40', tipo:'SignWell', detalle:'Contrato enviado para firma', resultado:'Firmado'},
+    ],
     pagos:[
       {fecha:'28/08/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:797},
       {fecha:'28/07/2026', nCuota:5, tipo:'Mensual', estado:'Pagado', importe:797},
@@ -350,7 +390,14 @@ const CLIENTES = [
     fechaAlta:'02/05/2026', fechaFinPermanencia:'02/08/2026',
     contacto:{ contacto1:'Kadiatou Diallo', whatsapp:'+34 622 019 447', ciudad:'Granada', pais:'España',
       cif:'', nombreFiscal:'', direccion:'', comercial:'Elena Reyes', referidor:'Clínica Dental Sur' },
-    contrato:{ firmado:true, fechaFirma:'02/05/2026', url:'#' },
+    contrato:{ firmado:true, fechaEnvio:'28/04/2026', fechaFirma:'02/05/2026', revisado:true, url:'#' },
+    alertas:[
+      {tipo:'crit', titulo:'Cobro fallido — cuota nº 4', detalle:'Stripe intentó cobrar el 27/08 y el 29/08, ambos rechazados (fondos insuficientes). Sin reintento programado.', asignado:'Elena Reyes', status:'En progreso'}
+    ],
+    actividades:[
+      {fecha:'29/08/2026 11:05', tipo:'Stripe', detalle:'Segundo intento de cobro fallido', resultado:'Fallido'},
+      {fecha:'27/08/2026 08:00', tipo:'Stripe', detalle:'Primer intento de cobro fallido', resultado:'Fallido'},
+    ],
     pagos:[
       {fecha:'27/08/2026', nCuota:4, tipo:'Mensual', estado:'Fallido', importe:462.21, detalleError:'Fondos insuficientes — 2º intento fallido'},
       {fecha:'27/07/2026', nCuota:3, tipo:'Mensual', estado:'Pagado', importe:462.21},
@@ -370,7 +417,11 @@ const CLIENTES = [
     fechaAlta:'20/01/2026', fechaFinPermanencia:null,
     contacto:{ contacto1:'Dr. Mark Levin', whatsapp:'', ciudad:'Miami, FL', pais:'Estados Unidos',
       cif:'', nombreFiscal:'Nova Dental LLC', direccion:'—', comercial:'Camila Duarte', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaFirma:'20/01/2026', url:'#' },
+    contrato:{ firmado:true, fechaEnvio:'18/01/2026', fechaFirma:'20/01/2026', revisado:true, url:'#' },
+    alertas:[],
+    actividades:[
+      {fecha:'28/08/2026 09:00', tipo:'Email', detalle:'Recibo de cobro — ciclo natural agosto', resultado:'Enviado'},
+    ],
     pagos:[
       {fecha:'28/08/2026', nCuota:7, tipo:'Mensual', estado:'Pagado', importe:1247},
       {fecha:'28/07/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:1247},
@@ -391,7 +442,13 @@ const CLIENTES = [
     contacto:{ contacto1:'Iñaki Zubiaurre Etxarri', whatsapp:'+34 688 214 590', ciudad:'Bilbao', pais:'España',
       cif:'B-95087412', nombreFiscal:'Centro Fisio Norte SL', direccion:'Gran Vía 41, 48009, Bilbao',
       comercial:'Marcos Ibáñez', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaFirma:'15/02/2026', url:'#' },
+    contrato:{ firmado:true, fechaEnvio:'12/02/2026', fechaFirma:'15/02/2026', revisado:true, url:'#' },
+    alertas:[
+      {tipo:'warn', titulo:'Enlace de pago caduca en 2 días', detalle:'El enlace enviado para regularizar septiembre caduca el 01/10/2026 y el cliente no lo ha usado todavía.', asignado:'Camila Duarte', status:'En progreso'}
+    ],
+    actividades:[
+      {fecha:'26/09/2026 16:20', tipo:'Email', detalle:'Enlace de regularización enviado', resultado:'Enviado'},
+    ],
     pagos:[
       {fecha:'28/08/2026', nCuota:7, tipo:'Mensual', estado:'Pagado', importe:1144},
       {fecha:'28/07/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:1144},
@@ -409,7 +466,11 @@ const CLIENTES = [
     contacto:{ contacto1:'Vega Almendros Ruiz', whatsapp:'+34 633 507 812', ciudad:'Sevilla', pais:'España',
       cif:'44219873F', nombreFiscal:'Vega Almendros Ruiz', direccion:'Calle Feria 102, 41003, Sevilla',
       comercial:'Elena Reyes', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaFirma:'08/08/2026', url:'#' },
+    contrato:{ firmado:true, fechaEnvio:'05/08/2026', fechaFirma:'08/08/2026', revisado:false, url:'#' },
+    alertas:[],
+    actividades:[
+      {fecha:'27/08/2026 09:00', tipo:'Email', detalle:'Recibo de cobro — ciclo natural agosto', resultado:'Enviado'},
+    ],
     pagos:[ {fecha:'27/08/2026', nCuota:1, tipo:'Primer pago', estado:'Pagado', importe:347} ],
     notas:[],
   },
@@ -420,7 +481,15 @@ let activeFilter = 'todos';
 let searchTerm = '';
 
 function tieneImpago(c){ return c.pagos.some(p => p.estado === 'Fallido'); }
-function estadoCliente(c){ return tieneImpago(c) ? 'crit' : 'good'; }
+function numAlertas(c){ return (c.alertas ? c.alertas.length : 0) + (tieneImpago(c) ? 1 : 0); }
+function estadoCliente(c){ return numAlertas(c) > 0 ? (tieneImpago(c) || c.alertas.some(a=>a.tipo==='crit') ? 'crit' : 'warn') : 'good'; }
+
+function saludFicha(c){
+  const k = c.contacto || {};
+  const campos = [k.cif, k.nombreFiscal, k.direccion, c.email, k.contacto1, k.whatsapp];
+  const rellenos = campos.filter(v => v && v.trim()).length;
+  return Math.round((rellenos / campos.length) * 100);
+}
 
 function renderList(){
   const cont = $('clientList');
@@ -428,19 +497,19 @@ function renderList(){
   $('count-label').textContent = `(${CLIENTES.length})`;
   const term = searchTerm.toLowerCase();
   CLIENTES
-    .filter(c => activeFilter==='todos' || (activeFilter==='alerta' && tieneImpago(c)) || (activeFilter==='ok' && !tieneImpago(c)))
+    .filter(c => activeFilter==='todos' || (activeFilter==='alerta' && numAlertas(c)>0) || (activeFilter==='ok' && numAlertas(c)===0))
     .filter(c => !term || c.nombre.toLowerCase().includes(term) || c.email.toLowerCase().includes(term))
     .forEach(c => {
       const row = document.createElement('div');
       row.className = 'client-row' + (c.id===selectedId ? ' selected' : '');
-      const dotCls = estadoCliente(c)==='crit' ? 'crit' : 'good';
+      const est = estadoCliente(c);
       row.innerHTML = `
-        <span class="dot ${dotCls}"></span>
+        <span class="dot ${est}"></span>
         <div class="info">
           <div class="name">${c.nombre}</div>
           <div class="meta">${fmtMoney(c.totalACobrar, c.moneda)}/mes · ${c.entidad}</div>
         </div>
-        ${tieneImpago(c) ? `<span class="badge crit">Impago</span>` : ''}
+        ${numAlertas(c)>0 ? `<span class="badge ${est}">${numAlertas(c)}</span>` : ''}
       `;
       row.addEventListener('click', () => { selectedId = c.id; renderList(); renderDetail(); });
       cont.appendChild(row);
@@ -455,18 +524,38 @@ function renderDetail(){
   const st = estadoCliente(c);
   const impago = c.pagos.find(p => p.estado === 'Fallido');
   const ultimoPago = c.pagos.find(p => p.estado === 'Pagado');
+  const salud = saludFicha(c);
 
   let html = '';
+
+  (c.alertas || []).forEach((a) => {
+    html += `
+      <div class="alert-banner ${a.tipo==='warn'?'warn':''}">
+        <div class="alert-top">
+          <span class="ic">${a.tipo==='crit' ? '🔴' : '🟡'}</span>
+          <div class="txt"><b>${a.titulo}</b><span>${a.detalle}</span></div>
+          <div class="actions">
+            <button type="button" class="ghost sm">Ver en Airtable</button>
+            <button type="button" class="primary sm">Marcar resuelto</button>
+          </div>
+        </div>
+        <div class="alert-meta">
+          <span style="font-size:0.72rem; color:var(--ink-dim);">Asignado a</span>
+          <select>${EQUIPO.map(p => `<option ${p===a.asignado?'selected':''}>${p}</option>`).join('')}</select>
+          <span class="alert-status">${a.status || 'Nueva'}</span>
+        </div>
+      </div>`;
+  });
 
   if (impago){
     html += `
       <div class="alert-banner">
         <div class="alert-top">
-          <span class="ic">⚠</span>
+          <span class="ic">🔴</span>
           <div class="txt"><b>Cobro fallido — cuota nº ${impago.nCuota}</b><span>${impago.detalleError || 'Revisar en Airtable, tabla Pagos.'} · ${fmtMoney(impago.importe, c.moneda)} previstos el ${impago.fecha}.</span></div>
           <div class="actions">
-            <button class="ghost sm">Ver en Airtable</button>
-            <button class="primary sm">Reenviar enlace de pago</button>
+            <button type="button" class="ghost sm">Ver en Airtable</button>
+            <button type="button" class="primary sm">Reenviar enlace de pago</button>
           </div>
         </div>
       </div>`;
@@ -475,14 +564,14 @@ function renderDetail(){
   html += `
     <div class="panel header-card">
       <div class="who">
-        <h2>${c.nombre}</h2>
+        <h2>${c.nombre}<span class="quality-badge ${salud>=90?'good':'warn'}">${salud>=90?'✓':'⚠'} ficha ${salud}%</span></h2>
         <div class="sub">
           <span>${c.email}</span>
           <span>${c.entidad}</span>
           <span>Moneda: ${c.moneda}</span>
         </div>
       </div>
-      <span class="status-pill ${st}">${st==='crit' ? 'Impago abierto' : 'Al día'}</span>
+      <span class="status-pill ${st}">${st==='crit' ? 'Requiere atención' : (st==='warn' ? 'Revisar pronto' : 'Al día')}</span>
     </div>
 
     <div class="tiles">
@@ -495,6 +584,8 @@ function renderDetail(){
         <span class="label">${impago ? 'Cobro pendiente' : 'Último cobro'}</span>
         <span class="value num">${fmtMoney((impago||ultimoPago||{}).importe, c.moneda)}</span>
         <span class="foot">${impago ? impago.fecha + ' · fallido' : (ultimoPago ? ultimoPago.fecha + ' · pagado' : '—')}</span>
+        <button type="button" class="ghost sm verify-btn" onclick="verificarCuota(this)">↻ Verificar cuota vs Stripe</button>
+        <div class="verify-result"></div>
       </div>
       <div class="tile">
         <span class="label">Descuento por referido</span>
@@ -514,6 +605,7 @@ function renderDetail(){
         <div class="tab" data-tab="pagos">Histórico de pagos</div>
         <div class="tab" data-tab="campanas">Campañas</div>
         <div class="tab" data-tab="modificar">Modificar suscripción</div>
+        <div class="tab" data-tab="actividad">Actividad</div>
         <div class="tab" data-tab="notas">Notas</div>
       </div>
 
@@ -545,12 +637,27 @@ function renderDetail(){
             </div>
           </div>
           <div class="info-block info-divider">
-            <div class="info-block-title">Contrato</div>
+            <div class="info-block-title">Forma de cobro</div>
             <div class="info-grid">
-              ${item('Firmado', c.contrato.firmado ? 'Sí — ' + c.contrato.fechaFirma : 'No')}
               ${item('Forma de cobro', c.formaPago + ' · día ' + c.diaCobro)}
             </div>
           </div>
+          ${c.contrato && c.contrato.firmado ? `
+          <div class="contract-card">
+            <div class="cl">
+              <span class="cico">📄</span>
+              <div class="ct">
+                <div class="t">Contrato firmado</div>
+                <div class="d">Enviado ${c.contrato.fechaEnvio} · Firmado ${c.contrato.fechaFirma} · ${c.contrato.revisado ? 'Revisado por el comercial ✓' : 'Pendiente de revisión por el comercial'}</div>
+              </div>
+            </div>
+            <div class="cr">
+              <a class="ghost" href="${c.contrato.url}" target="_blank" rel="noopener">Ver en Assets ↗</a>
+              <button type="button" class="primary sm">Reenviar copia</button>
+            </div>
+          </div>` : `
+          <div class="mod-note" style="margin:18px 20px 20px;">Sin contrato firmado todavía en este registro — se adjunta automáticamente en Assets en cuanto SignWell confirma la firma.</div>
+          `}
           `;
         })()}
       </div>
@@ -593,6 +700,9 @@ function renderDetail(){
                 <span>Activa desde: ${cp.desde}</span>
               </div>
               <div class="cspend">Inversión ejecutada: ${fmtMoney(cp.inversion, c.moneda)} de ${fmtMoney(cp.presupuesto, c.moneda)} presupuestados</div>
+              <div class="cactions">
+                ${cp.estado==='Activa' ? '<button type="button" class="ghost sm">⏸ Pausar</button>' : '<button type="button" class="primary sm">▶ Reactivar</button>'}
+              </div>
             </div>
           `).join('')}
         </div>
@@ -623,6 +733,22 @@ function renderDetail(){
             <button type="button" class="ghost">Cancelar</button>
             <button type="button" class="primary">Guardar cambios en Airtable</button>
           </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="actividad">
+        <div class="section-head">
+          <h3>Actividad registrada (tabla Actividades)</h3>
+          <span class="n">${(c.actividades||[]).length}</span>
+        </div>
+        <div class="activity-list" style="padding:4px 20px 20px;">
+          ${(c.actividades && c.actividades.length) ? c.actividades.map(a => `
+            <div class="activity-item">
+              <span class="ch">${a.tipo}</span>
+              <span class="cd">${a.fecha}</span>
+              <div class="ct">${a.detalle}<div class="res">${a.resultado}</div></div>
+            </div>
+          `).join('') : '<div style="color:var(--ink-dim); font-size:0.82rem; padding:10px 0;">Sin actividad registrada.</div>'}
         </div>
       </div>
 
@@ -677,6 +803,18 @@ function renderDetail(){
     cont.querySelector('#'+id).addEventListener('input', updatePreview);
   });
   updatePreview();
+}
+
+function verificarCuota(btn){
+  const c = CLIENTES.find(x => x.id===selectedId);
+  const resultEl = btn.nextElementSibling;
+  // Demo: sin backend todavía — en producción esto llama al webhook real
+  // de "Clientes - Recalcular Cuota y Validar Stripe" y usa su respuesta.
+  const ok = !tieneImpago(c);
+  resultEl.className = 'verify-result show ' + (ok ? 'ok' : 'bad');
+  resultEl.textContent = ok
+    ? '✓ Cuota correcta — Stripe cobra lo mismo que calcula la regla de Airtable para esta entidad.'
+    : '✗ Hay un cobro fallido en esta cuenta — revisa el estado antes de confiar en el importe previsto.';
 }
 
 $('searchBox').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
