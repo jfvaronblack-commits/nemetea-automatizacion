@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Gestión de Clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#F6F4EF;
+    --paper-raised:#FFFFFF;
+    --ink:#1B1D22;
+    --ink-dim:#6b6a61;
+    --line:#E1DCD0;
+    --accent:#2F6F5E;
+    --accent-contrast:#FFFFFF;
+    --accent-soft:#DCEEE8;
+    --warm:#C96A28;
+    --warm-soft:#F6E4D2;
+    --critical:#A8402F;
+    --critical-soft:#F3DAD3;
+    --pending:#8f887c;
+    --pending-soft:#EAE5D9;
+    --shadow: 0 1px 2px rgba(27,29,34,0.05), 0 8px 24px -12px rgba(27,29,34,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#15171B; --paper-raised:#1D2024; --ink:#ECE9E1; --ink-dim:#A29C8E;
+      --line:#2C2F35; --accent:#57B39B; --accent-contrast:#0B1210; --accent-soft:#1D3630;
+      --warm:#E08A47; --warm-soft:#3A2A18; --critical:#DB7A65; --critical-soft:#3B241E;
+      --pending:#8b8578; --pending-soft:#26282C;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#15171B; --paper-raised:#1D2024; --ink:#ECE9E1; --ink-dim:#A29C8E;
+    --line:#2C2F35; --accent:#57B39B; --accent-contrast:#0B1210; --accent-soft:#1D3630;
+    --warm:#E08A47; --warm-soft:#3A2A18; --critical:#DB7A65; --critical-soft:#3B241E;
+    --pending:#8b8578; --pending-soft:#26282C;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans", system-ui, sans-serif;
+    padding-inline: clamp(16px, 4vw, 40px); padding-block: 28px 64px; }
+  .num{font-family:"IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;}
+  .hidden{display:none !important;}
+
+  /* ---------- login (mismo patrón que ruta-de-arranque.html) ---------- */
+  #login-screen{ min-height:80vh; display:flex; align-items:center; justify-content:center; }
+  .login-card{ width:min(340px, 90vw); background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:14px; box-shadow:var(--shadow); padding:28px 26px; }
+  .login-card .mark{ font-family:"Fraunces"; font-size:1.3rem; font-weight:600; color:var(--ink); }
+  .login-card .sub{ display:block; font-size:0.82rem; color:var(--ink-dim); margin-top:2px; margin-bottom:22px; }
+  .login-card label{ display:block; font-size:0.82rem; color:var(--ink-dim); margin-bottom:6px; margin-top:14px; }
+  .login-card input{ width:100%; font-family:"IBM Plex Sans"; font-size:0.9rem; padding:9px 11px;
+    border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); }
+  .login-card button{ width:100%; margin-top:22px; }
+  .login-error{ color:var(--critical); font-size:0.82rem; margin-top:12px; min-height:1.2em; }
+
+  /* ---------- top ---------- */
+  .topbar{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    max-width:1320px; margin:0 auto 6px; }
+  .brand{display:flex; align-items:baseline; gap:12px;}
+  .brand .mark{ font-family:"Fraunces", serif; font-weight:600; font-size:1.5rem; letter-spacing:-0.01em; }
+  .brand .sub{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.09em; color:var(--ink-dim); }
+  .mockbadge{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--warm);
+    border:1px solid var(--warm); border-radius:999px; padding:3px 10px; white-space:nowrap; }
+  .logout-btn{ font-family:"IBM Plex Sans"; font-size:0.78rem; color:var(--ink-dim); background:none;
+    border:1px solid var(--line); border-radius:8px; padding:6px 12px; cursor:pointer; }
+  .subhead{ max-width:1320px; margin:2px auto 22px; color:var(--ink-dim); font-size:0.92rem; max-width:70ch; }
+
+  button{ font-family:"IBM Plex Sans"; }
+  .primary{ background:var(--accent); color:var(--accent-contrast); border:1px solid var(--accent);
+    border-radius:8px; padding:9px 16px; font-weight:500; font-size:0.86rem; cursor:pointer; }
+  .ghost{ background:none; border:1px solid var(--line); border-radius:8px; padding:9px 16px;
+    font-weight:500; font-size:0.86rem; color:var(--ink); cursor:pointer; }
+  .sm{ padding:5px 10px; font-size:0.76rem; }
+  .danger{ background:var(--critical); color:#fff; border:1px solid var(--critical); border-radius:8px;
+    padding:9px 16px; font-weight:500; font-size:0.86rem; cursor:pointer; }
+
+  /* ---------- app layout ---------- */
+  .app{ max-width:1320px; margin:0 auto; display:grid; grid-template-columns: 330px 1fr; gap:20px; align-items:start; }
+  @media (max-width:980px){ .app{ grid-template-columns: 1fr; } }
+
+  .panel{ background:var(--paper-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
+  .list-panel{ position:sticky; top:20px; }
+  .list-head{ padding:16px 18px 12px; border-bottom:1px solid var(--line); }
+  .list-head h2{ font-family:"Fraunces", serif; font-weight:600; font-size:1rem; margin:0 0 10px; }
+  .search-box input{ width:100%; font-size:0.84rem; padding:8px 10px; border:1px solid var(--line);
+    border-radius:8px; background:var(--paper); color:var(--ink); outline:none; }
+  .search-box input:focus{ border-color:var(--accent); }
+  .filter-row{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .chip{ font-size:0.68rem; font-weight:600; letter-spacing:.02em; padding:4px 10px; border-radius:999px;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink-dim); cursor:pointer; user-select:none; }
+  .chip.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-contrast); }
+
+  .client-list{ max-height:660px; overflow-y:auto; }
+  .client-row{ display:flex; align-items:center; gap:10px; padding:11px 18px; border-bottom:1px solid var(--line);
+    cursor:pointer; }
+  .client-row:hover{ background:var(--paper); }
+  .client-row.selected{ background:var(--accent-soft); }
+  .client-row .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .dot.good{ background:var(--accent); } .dot.warn{ background:var(--warm); } .dot.crit{ background:var(--critical); }
+  .client-row .info{ flex:1; min-width:0; }
+  .client-row .name{ font-size:0.86rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .client-row .meta{ font-size:0.72rem; color:var(--ink-dim); margin-top:1px; }
+  .client-row .badge{ font-size:0.66rem; font-weight:700; padding:2px 7px; border-radius:999px; flex:none; }
+  .badge.crit{ background:var(--critical-soft); color:var(--critical); }
+  .badge.warn{ background:var(--warm-soft); color:var(--warm); }
+
+  /* ---------- detalle ---------- */
+  .detail{ display:flex; flex-direction:column; gap:18px; }
+
+  .alert-banner{ display:flex; flex-direction:column; gap:10px; padding:14px 18px; border-radius:12px;
+    border:1px solid var(--critical); background:var(--critical-soft); }
+  .alert-banner.warn{ border-color:var(--warm); background:var(--warm-soft); }
+  .alert-top{ display:flex; align-items:flex-start; gap:12px; }
+  .alert-banner .ic{ font-size:1.1rem; flex:none; }
+  .alert-banner .txt b{ display:block; font-size:0.86rem; color:var(--critical); margin-bottom:2px; }
+  .alert-banner.warn .txt b{ color:var(--warm); }
+  .alert-banner .txt span{ font-size:0.78rem; color:var(--ink-dim); line-height:1.5; }
+  .alert-banner .actions{ margin-left:auto; display:flex; gap:8px; flex:none; flex-wrap:wrap; }
+
+  .header-card{ padding:20px 22px; display:flex; align-items:flex-start; justify-content:space-between;
+    gap:20px; flex-wrap:wrap; }
+  .header-card h2{ font-family:"Fraunces", serif; font-weight:600; font-size:1.3rem; margin:0 0 4px; }
+  .header-card .sub{ font-size:0.8rem; color:var(--ink-dim); display:flex; gap:14px; flex-wrap:wrap; }
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:0.7rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.03em; padding:5px 12px; border-radius:999px; }
+  .status-pill.good{ background:var(--accent-soft); color:var(--accent); }
+  .status-pill.warn{ background:var(--warm-soft); color:var(--warm); }
+  .status-pill.crit{ background:var(--critical-soft); color:var(--critical); }
+
+  .tiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  @media (max-width:820px){ .tiles{ grid-template-columns:repeat(2,1fr); } }
+  .tile{ background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+    box-shadow:var(--shadow); display:flex; flex-direction:column; gap:4px; }
+  .tile .label{ font-size:0.66rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); font-weight:600; }
+  .tile .value{ font-family:"Fraunces", serif; font-size:1.4rem; font-weight:600; letter-spacing:-.01em; }
+  .tile .foot{ font-size:0.74rem; color:var(--ink-dim); }
+  .tile.crit .value{ color:var(--critical); } .tile.good .value{ color:var(--accent); } .tile.warn .value{ color:var(--warm); }
+
+  .tabs{ display:flex; gap:4px; border-bottom:1px solid var(--line); padding:0 6px; overflow-x:auto; }
+  .tab{ font-size:0.82rem; font-weight:500; color:var(--ink-dim); padding:10px 14px; cursor:pointer;
+    border-bottom:2px solid transparent; white-space:nowrap; background:none; border-top:none; border-left:none; border-right:none; }
+  .tab.active{ color:var(--ink); border-bottom-color:var(--accent); }
+  .tab-panel{ display:none; } .tab-panel.active{ display:block; }
+
+  .section-head{ padding:16px 20px 12px; display:flex; align-items:center; justify-content:space-between;
+    gap:10px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .section-head h3{ font-family:"Fraunces", serif; font-weight:600; font-size:0.94rem; margin:0; }
+  .section-head .n{ font-family:"IBM Plex Mono"; font-size:0.7rem; color:var(--ink-dim); border:1px solid var(--line);
+    border-radius:999px; padding:2px 9px; }
+
+  table.data{ width:100%; border-collapse:collapse; }
+  table.data thead th{ text-align:left; font-size:0.66rem; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--ink-dim); font-weight:600; padding:0 20px 9px; border-bottom:1px solid var(--line); }
+  table.data thead th.num{ text-align:right; }
+  table.data tbody td{ padding:12px 20px; border-bottom:1px solid var(--line); vertical-align:middle; font-size:0.84rem; }
+  table.data tbody tr:last-child td{ border-bottom:none; }
+  table.data tbody tr:hover{ background:var(--paper); }
+  td.date{ font-family:"IBM Plex Mono"; font-size:0.78rem; white-space:nowrap; color:var(--ink-dim); }
+  td.amount{ text-align:right; font-family:"IBM Plex Mono"; font-weight:600; white-space:nowrap; }
+  td.rowactions{ text-align:right; white-space:nowrap; }
+  td.rowactions button{ margin-left:6px; }
+  .pill{ display:inline-flex; align-items:center; gap:5px; font-size:0.66rem; font-weight:700; letter-spacing:.02em;
+    text-transform:uppercase; padding:3px 9px; border-radius:999px; }
+  .pill.good{ background:var(--accent-soft); color:var(--accent); }
+  .pill.warn{ background:var(--warm-soft); color:var(--warm); }
+  .pill.crit{ background:var(--critical-soft); color:var(--critical); }
+  .pill.mute{ background:var(--pending-soft); color:var(--pending); }
+
+  .info-block{ padding:16px 20px 6px; }
+  .info-block-title{ font-size:0.68rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--ink-dim); margin-bottom:10px; }
+  .info-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px 20px; }
+  @media (max-width:820px){ .info-grid{ grid-template-columns:repeat(2,1fr); } }
+  .info-item{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .info-item .k{ font-size:0.68rem; color:var(--ink-dim); font-weight:600; letter-spacing:.02em; }
+  .info-item .v{ font-size:0.86rem; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .info-item .v.empty{ color:var(--critical); font-style:italic; }
+  .info-divider{ margin:16px 20px 0; padding-top:14px; border-top:1px solid var(--line); }
+
+  .campaign-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; padding:16px 20px 20px; }
+  .campaign-card{ border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--paper);
+    display:flex; flex-direction:column; gap:8px; }
+  .campaign-card .cname{ font-weight:600; font-size:0.86rem; }
+  .campaign-card .cmeta{ font-size:0.76rem; color:var(--ink-dim); display:flex; flex-direction:column; gap:2px; }
+  .campaign-card .cspend{ font-size:0.74rem; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:7px; }
+  .campaign-card .cactions{ display:flex; gap:6px; }
+
+  .mod-body{ padding:18px 20px 20px; display:flex; flex-direction:column; gap:14px; }
+  .mod-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0;
+    border-bottom:1px solid var(--line); }
+  .mod-row:last-child{ border-bottom:none; }
+  .mod-row .t{ font-size:0.86rem; font-weight:500; }
+  .mod-row .d{ font-size:0.74rem; color:var(--ink-dim); margin-top:1px; }
+  .switch{ position:relative; width:38px; height:22px; flex:none; }
+  .switch input{ opacity:0; width:0; height:0; position:absolute; }
+  .switch .track{ position:absolute; inset:0; background:var(--line); border-radius:20px; cursor:pointer; }
+  .switch .track::after{ content:""; position:absolute; width:16px; height:16px; left:3px; top:3px;
+    background:var(--paper-raised); border-radius:50%; transition: transform .15s ease; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+  .switch input:checked + .track{ background:var(--accent); }
+  .switch input:checked + .track::after{ transform:translateX(16px); }
+  .mod-footer{ display:flex; justify-content:flex-end; gap:10px; padding-top:6px; }
+  .mod-note{ font-size:0.72rem; color:var(--ink-dim); background:var(--paper); border:1px dashed var(--line);
+    border-radius:8px; padding:9px 11px; line-height:1.5; }
+  .mod-calc{ font-size:0.78rem; color:var(--ink); background:var(--accent-soft); border-radius:8px; padding:10px 12px;
+    line-height:1.6; }
+  .mod-calc b{ font-family:"IBM Plex Mono"; }
+
+  .notes-body{ padding:16px 20px 20px; display:flex; flex-direction:column; gap:16px; }
+  .note-add{ display:flex; gap:8px; }
+  .note-add textarea{ flex:1; font-family:"IBM Plex Sans"; font-size:0.84rem; padding:8px 10px; border:1px solid var(--line);
+    border-radius:8px; background:var(--paper); color:var(--ink); resize:vertical; min-height:40px; }
+  .note-item{ display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .note-item:last-child{ border-bottom:none; }
+  .note-item .avatar{ width:26px; height:26px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
+    font-size:0.7rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; }
+  .note-item .body{ flex:1; min-width:0; }
+  .note-item .who{ font-size:0.8rem; font-weight:600; }
+  .note-item .who .when{ font-weight:400; color:var(--ink-dim); font-size:0.7rem; margin-left:6px; }
+  .note-item .txt{ font-size:0.82rem; color:var(--ink-dim); margin-top:2px; line-height:1.5; }
+
+  footer.note{ max-width:1320px; margin:28px auto 0; padding-top:16px; border-top:1px solid var(--line);
+    font-size:0.72rem; color:var(--ink-dim); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+
+  <div id="login-screen">
+    <form class="login-card" id="login-form" autocomplete="on">
+      <span class="mark">Panel de Clientes</span>
+      <span class="sub">Nemetea · acceso privado</span>
+      <label for="login-user">Usuario</label>
+      <input type="email" id="login-user" name="username" autocomplete="username" required>
+      <label for="login-pass">Contraseña</label>
+      <input type="password" id="login-pass" name="password" autocomplete="current-password" required>
+      <button type="submit" class="primary">Entrar</button>
+      <div class="login-error" id="login-error"></div>
+    </form>
+  </div>
+
+  <div id="app-root" class="hidden">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">Panel de Clientes</span>
+      <span class="sub">Nemetea · ficha única por cliente</span>
+    </div>
+    <button type="button" class="logout-btn" id="logout-btn">Cerrar sesión</button>
+    <span class="mockbadge">Diseño · datos de ejemplo</span>
+  </div>
+  <p class="subhead">Vista única por cliente: datos de alta, calendario de cobros (Airtable ↔ Stripe), campañas y modificación de suscripción. Los importes y reglas de esta pantalla siguen el motor de cálculo real de la tabla Clientes (Regla cuota + Multiplicador cobro) — nada se recalcula aquí por su cuenta. Sin conexión a Airtable todavía: es la maqueta de interfaz antes de enganchar los webhooks de n8n.</p>
+
+  <div class="app">
+    <div class="panel list-panel">
+      <div class="list-head">
+        <h2>Clientes <span style="color:var(--ink-dim); font-weight:400;" id="count-label"></span></h2>
+        <div class="search-box"><input type="text" id="searchBox" placeholder="Buscar por nombre o email..."></div>
+        <div class="filter-row">
+          <span class="chip active" data-filter="todos">Todos</span>
+          <span class="chip" data-filter="alerta">Con impago</span>
+          <span class="chip" data-filter="ok">Al día</span>
+        </div>
+      </div>
+      <div class="client-list" id="clientList"></div>
+    </div>
+
+    <div class="detail" id="detail"></div>
+  </div>
+
+  <footer class="note">
+    <span>Nemetea — panel de gestión de clientes (diseño)</span>
+    <span>Fuente de datos real: Airtable · base appEZnB8ZDVAcBDAV</span>
+  </footer>
+
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtMoney = (n, moneda) => (n==null ? '—' : n.toLocaleString('es-ES', {style:'currency', currency: moneda||'EUR', maximumFractionDigits:2}));
+const EQUIPO = ['Sin asignar','Camila Duarte','Elena Reyes','Marcos Ibáñez','Micaela','Juanfra'];
+
+// ---------------------------------------------------------------
+// Login — mismo patrón cosmético que ruta-de-arranque.html.
+// Pendiente de sustituir por validación real + token de webhooks
+// (lo dejamos para el final, según lo acordado).
+// ---------------------------------------------------------------
+const AUTH_STORAGE_KEY = "panelClientesAuth";
+
+function showApp(){
+  $("login-screen").classList.add("hidden");
+  $("app-root").classList.remove("hidden");
+}
+function showLogin(){
+  $("app-root").classList.add("hidden");
+  $("login-screen").classList.remove("hidden");
+}
+(function initAuth(){
+  if (localStorage.getItem(AUTH_STORAGE_KEY) === "ok"){ showApp(); } else { showLogin(); }
+  $("login-form").addEventListener("submit", (e)=>{
+    e.preventDefault();
+    // Demo: acepta cualquier usuario/contraseña no vacíos. Sin validación real todavía.
+    localStorage.setItem(AUTH_STORAGE_KEY, "ok");
+    showApp();
+  });
+  $("logout-btn").addEventListener("click", ()=>{
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    showLogin();
+  });
+})();
+
+// ---------------------------------------------------------------
+// DATOS DE EJEMPLO — campos y reglas alineados con el esquema real
+// de Airtable (base appEZnB8ZDVAcBDAV): Entidad Contratante, Moneda,
+// Forma de pago, Total a Cobrar (EUR/USD), Descuento Referidos (calc),
+// Contact Center a Cobrar (calc), Fecha Fin Permanencia, y la tabla
+// Pagos con Estado: Previsto / Enlace enviado / Pagado / Fallido / Anulado.
+// ---------------------------------------------------------------
+const CLIENTES = [
+  {
+    id:'espacio-raiz', nombre:'Espacio Raíz Fisioterapia', email:'contacto@espacioraiz.example',
+    entidad:'SL', moneda:'EUR', formaPago:'Tarjeta', diaCobro:28,
+    cuotaBase:647, cc:true, ccCuota:150,
+    referidosActivos:0, descuentoReferidos:0,
+    totalACobrar:797, // cuotaBase + CC, sin descuento
+    campanas:[{n:'Campaña principal', estado:'Activa', desde:'12/03/2026', inversion:650, presupuesto:650}],
+    fechaAlta:'09/03/2026', fechaFinPermanencia:null,
+    contacto:{ contacto1:'Nadia Ferrer Solís', whatsapp:'+34 611 220 384', ciudad:'Murcia', pais:'España',
+      cif:'B-45118302', nombreFiscal:'Espacio Raíz Fisioterapia SL', direccion:'Calle Mayor 14, 3ºB, 30001, Murcia',
+      comercial:'Camila Duarte', referidor:'— Sin referidor —' },
+    contrato:{ firmado:true, fechaFirma:'09/03/2026', url:'#' },
+    pagos:[
+      {fecha:'28/08/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:797},
+      {fecha:'28/07/2026', nCuota:5, tipo:'Mensual', estado:'Pagado', importe:797},
+      {fecha:'28/09/2026', nCuota:7, tipo:'Mensual', estado:'Previsto', importe:797},
+    ],
+    notas:[ {autor:'Camila', fecha:'15/03/2026', texto:'Cliente muy satisfecha con los leads del primer mes.'} ],
+  },
+  {
+    id:'kado-estetica', nombre:'Kado Estética', email:'hola@kadoestetica.example',
+    entidad:'Autónomo Eduardo', moneda:'EUR', formaPago:'SEPA', diaCobro:27,
+    cuotaBase:497, cc:false, ccCuota:0,
+    referidosActivos:1, descuentoReferidos:7,
+    totalACobrar:462.21, // 497 * (1-0.07)
+    campanas:[{n:'Campaña principal', estado:'Activa', desde:'02/05/2026', inversion:150, presupuesto:150}],
+    fechaAlta:'02/05/2026', fechaFinPermanencia:'02/08/2026',
+    contacto:{ contacto1:'Kadiatou Diallo', whatsapp:'+34 622 019 447', ciudad:'Granada', pais:'España',
+      cif:'', nombreFiscal:'', direccion:'', comercial:'Elena Reyes', referidor:'Clínica Dental Sur' },
+    contrato:{ firmado:true, fechaFirma:'02/05/2026', url:'#' },
+    pagos:[
+      {fecha:'27/08/2026', nCuota:4, tipo:'Mensual', estado:'Fallido', importe:462.21, detalleError:'Fondos insuficientes — 2º intento fallido'},
+      {fecha:'27/07/2026', nCuota:3, tipo:'Mensual', estado:'Pagado', importe:462.21},
+    ],
+    notas:[],
+  },
+  {
+    id:'nova-dental-us', nombre:'Nova Dental (US)', email:'billing@novadental.example',
+    entidad:'LLC Extranjero', moneda:'USD', formaPago:'Tarjeta', diaCobro:28,
+    cuotaBase:900, cc:false, ccCuota:0,
+    referidosActivos:0, descuentoReferidos:0,
+    totalACobrar:900,
+    campanas:[
+      {n:'Campaña principal', estado:'Activa', desde:'20/01/2026', inversion:900, presupuesto:900},
+      {n:'Campaña secundaria', estado:'Activa', desde:'15/06/2026', inversion:347, presupuesto:347},
+    ],
+    fechaAlta:'20/01/2026', fechaFinPermanencia:null,
+    contacto:{ contacto1:'Dr. Mark Levin', whatsapp:'', ciudad:'Miami, FL', pais:'Estados Unidos',
+      cif:'', nombreFiscal:'Nova Dental LLC', direccion:'—', comercial:'Camila Duarte', referidor:'— Sin referidor —' },
+    contrato:{ firmado:true, fechaFirma:'20/01/2026', url:'#' },
+    pagos:[
+      {fecha:'28/08/2026', nCuota:7, tipo:'Mensual', estado:'Pagado', importe:1247},
+      {fecha:'28/07/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:1247},
+    ],
+    notas:[],
+  },
+  {
+    id:'centro-fisio-norte', nombre:'Centro Fisio Norte', email:'recepcion@fisionorte.example',
+    entidad:'SL', moneda:'EUR', formaPago:'Tarjeta', diaCobro:28,
+    cuotaBase:647, cc:true, ccCuota:150,
+    referidosActivos:0, descuentoReferidos:0,
+    totalACobrar:1144, // 647 + 347 secundaria + 150 CC
+    campanas:[
+      {n:'Campaña principal', estado:'Activa', desde:'15/02/2026', inversion:650, presupuesto:650},
+      {n:'Campaña secundaria', estado:'Activa', desde:'10/07/2026', inversion:340, presupuesto:347},
+    ],
+    fechaAlta:'15/02/2026', fechaFinPermanencia:null,
+    contacto:{ contacto1:'Iñaki Zubiaurre Etxarri', whatsapp:'+34 688 214 590', ciudad:'Bilbao', pais:'España',
+      cif:'B-95087412', nombreFiscal:'Centro Fisio Norte SL', direccion:'Gran Vía 41, 48009, Bilbao',
+      comercial:'Marcos Ibáñez', referidor:'— Sin referidor —' },
+    contrato:{ firmado:true, fechaFirma:'15/02/2026', url:'#' },
+    pagos:[
+      {fecha:'28/08/2026', nCuota:7, tipo:'Mensual', estado:'Pagado', importe:1144},
+      {fecha:'28/07/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:1144},
+    ],
+    notas:[],
+  },
+  {
+    id:'pilates-vega', nombre:'Estudio Pilates Vega', email:'info@pilatesvega.example',
+    entidad:'Autónomo Eduardo', moneda:'EUR', formaPago:'SEPA', diaCobro:27,
+    cuotaBase:347, cc:false, ccCuota:0,
+    referidosActivos:0, descuentoReferidos:0,
+    totalACobrar:347,
+    campanas:[{n:'Campaña principal', estado:'Activa', desde:'08/08/2026', inversion:150, presupuesto:150}],
+    fechaAlta:'08/08/2026', fechaFinPermanencia:'08/11/2026',
+    contacto:{ contacto1:'Vega Almendros Ruiz', whatsapp:'+34 633 507 812', ciudad:'Sevilla', pais:'España',
+      cif:'44219873F', nombreFiscal:'Vega Almendros Ruiz', direccion:'Calle Feria 102, 41003, Sevilla',
+      comercial:'Elena Reyes', referidor:'— Sin referidor —' },
+    contrato:{ firmado:true, fechaFirma:'08/08/2026', url:'#' },
+    pagos:[ {fecha:'27/08/2026', nCuota:1, tipo:'Primer pago', estado:'Pagado', importe:347} ],
+    notas:[],
+  },
+];
+
+let selectedId = CLIENTES[0].id;
+let activeFilter = 'todos';
+let searchTerm = '';
+
+function tieneImpago(c){ return c.pagos.some(p => p.estado === 'Fallido'); }
+function estadoCliente(c){ return tieneImpago(c) ? 'crit' : 'good'; }
+
+function renderList(){
+  const cont = $('clientList');
+  cont.innerHTML = '';
+  $('count-label').textContent = `(${CLIENTES.length})`;
+  const term = searchTerm.toLowerCase();
+  CLIENTES
+    .filter(c => activeFilter==='todos' || (activeFilter==='alerta' && tieneImpago(c)) || (activeFilter==='ok' && !tieneImpago(c)))
+    .filter(c => !term || c.nombre.toLowerCase().includes(term) || c.email.toLowerCase().includes(term))
+    .forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'client-row' + (c.id===selectedId ? ' selected' : '');
+      const dotCls = estadoCliente(c)==='crit' ? 'crit' : 'good';
+      row.innerHTML = `
+        <span class="dot ${dotCls}"></span>
+        <div class="info">
+          <div class="name">${c.nombre}</div>
+          <div class="meta">${fmtMoney(c.totalACobrar, c.moneda)}/mes · ${c.entidad}</div>
+        </div>
+        ${tieneImpago(c) ? `<span class="badge crit">Impago</span>` : ''}
+      `;
+      row.addEventListener('click', () => { selectedId = c.id; renderList(); renderDetail(); });
+      cont.appendChild(row);
+    });
+}
+
+function renderDetail(){
+  const c = CLIENTES.find(x => x.id===selectedId);
+  const cont = $('detail');
+  if (!c){ cont.innerHTML = '<div class="panel" style="padding:40px; text-align:center; color:var(--ink-dim);">Selecciona un cliente</div>'; return; }
+
+  const st = estadoCliente(c);
+  const impago = c.pagos.find(p => p.estado === 'Fallido');
+  const ultimoPago = c.pagos.find(p => p.estado === 'Pagado');
+
+  let html = '';
+
+  if (impago){
+    html += `
+      <div class="alert-banner">
+        <div class="alert-top">
+          <span class="ic">⚠</span>
+          <div class="txt"><b>Cobro fallido — cuota nº ${impago.nCuota}</b><span>${impago.detalleError || 'Revisar en Airtable, tabla Pagos.'} · ${fmtMoney(impago.importe, c.moneda)} previstos el ${impago.fecha}.</span></div>
+          <div class="actions">
+            <button class="ghost sm">Ver en Airtable</button>
+            <button class="primary sm">Reenviar enlace de pago</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  html += `
+    <div class="panel header-card">
+      <div class="who">
+        <h2>${c.nombre}</h2>
+        <div class="sub">
+          <span>${c.email}</span>
+          <span>${c.entidad}</span>
+          <span>Moneda: ${c.moneda}</span>
+        </div>
+      </div>
+      <span class="status-pill ${st}">${st==='crit' ? 'Impago abierto' : 'Al día'}</span>
+    </div>
+
+    <div class="tiles">
+      <div class="tile">
+        <span class="label">Total a cobrar / mes</span>
+        <span class="value num">${fmtMoney(c.totalACobrar, c.moneda)}</span>
+        <span class="foot">${c.cc ? `incl. Contact Center (${fmtMoney(c.ccCuota, c.moneda)})` : 'sin Contact Center'}</span>
+      </div>
+      <div class="tile ${impago ? 'crit' : 'good'}">
+        <span class="label">${impago ? 'Cobro pendiente' : 'Último cobro'}</span>
+        <span class="value num">${fmtMoney((impago||ultimoPago||{}).importe, c.moneda)}</span>
+        <span class="foot">${impago ? impago.fecha + ' · fallido' : (ultimoPago ? ultimoPago.fecha + ' · pagado' : '—')}</span>
+      </div>
+      <div class="tile">
+        <span class="label">Descuento por referido</span>
+        <span class="value num">${c.descuentoReferidos}%</span>
+        <span class="foot">${c.referidosActivos} referido${c.referidosActivos===1?'':'s'} activo${c.referidosActivos===1?'':'s'} · 7% c/u, tope 100%</span>
+      </div>
+      <div class="tile">
+        <span class="label">${c.fechaFinPermanencia ? 'Fin de permanencia' : 'Forma de cobro'}</span>
+        <span class="value num" style="font-size:1.1rem;">${c.fechaFinPermanencia || c.formaPago}</span>
+        <span class="foot">${c.fechaFinPermanencia ? 'permanencia de 3 meses, sin condiciones' : 'día ' + c.diaCobro + ' de cada mes'}</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs">
+        <div class="tab active" data-tab="datos">Datos y contrato</div>
+        <div class="tab" data-tab="pagos">Histórico de pagos</div>
+        <div class="tab" data-tab="campanas">Campañas</div>
+        <div class="tab" data-tab="modificar">Modificar suscripción</div>
+        <div class="tab" data-tab="notas">Notas</div>
+      </div>
+
+      <div class="tab-panel active" data-panel="datos">
+        ${(() => {
+          const k = c.contacto || {};
+          const item = (label, val) => `<div class="info-item"><span class="k">${label}</span><span class="v ${val ? '' : 'empty'}">${val || '— sin rellenar —'}</span></div>`;
+          return `
+          <div class="info-block">
+            <div class="info-block-title">Contacto</div>
+            <div class="info-grid">
+              ${item('Contacto principal', k.contacto1)}
+              ${item('Email', c.email)}
+              ${item('WhatsApp', k.whatsapp)}
+              ${item('Ciudad', k.ciudad)}
+              ${item('País', k.pais)}
+              ${item('Fecha de alta', c.fechaAlta)}
+            </div>
+          </div>
+          <div class="info-block info-divider">
+            <div class="info-block-title">Datos fiscales</div>
+            <div class="info-grid">
+              ${item('Entidad contratante', c.entidad)}
+              ${item('CIF / NIF', k.cif)}
+              ${item('Nombre fiscal', k.nombreFiscal)}
+              ${item('Dirección fiscal', k.direccion)}
+              ${item('Responsable comercial', k.comercial)}
+              ${item('Referidor', k.referidor)}
+            </div>
+          </div>
+          <div class="info-block info-divider">
+            <div class="info-block-title">Contrato</div>
+            <div class="info-grid">
+              ${item('Firmado', c.contrato.firmado ? 'Sí — ' + c.contrato.fechaFirma : 'No')}
+              ${item('Forma de cobro', c.formaPago + ' · día ' + c.diaCobro)}
+            </div>
+          </div>
+          `;
+        })()}
+      </div>
+
+      <div class="tab-panel" data-panel="pagos">
+        <div class="section-head">
+          <h3>Calendario de cobros (tabla Pagos de Airtable)</h3>
+          <span class="n">${c.pagos.length} cuotas</span>
+        </div>
+        <table class="data">
+          <thead><tr><th>Fecha prevista</th><th>Nº cuota</th><th>Tipo</th><th>Estado</th><th class="num">Importe</th><th></th></tr></thead>
+          <tbody>
+            ${c.pagos.map(p => `
+              <tr>
+                <td class="date">${p.fecha}</td>
+                <td class="num">${p.nCuota}</td>
+                <td>${p.tipo}</td>
+                <td><span class="pill ${p.estado==='Pagado'?'good':(p.estado==='Previsto'||p.estado==='Enlace enviado'?'mute':'crit')}">${p.estado}</span></td>
+                <td class="amount">${fmtMoney(p.importe, c.moneda)}</td>
+                <td class="rowactions">
+                  ${p.estado==='Fallido' ? '<button class="ghost sm">Reenviar enlace</button>' : ''}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="tab-panel" data-panel="campanas">
+        <div class="section-head">
+          <h3>Campañas</h3>
+          <span class="n">${c.campanas.length}</span>
+        </div>
+        <div class="campaign-grid">
+          ${c.campanas.map((cp, i) => `
+            <div class="campaign-card">
+              <div class="cname">${cp.n}${i>0 ? ' <span style="font-weight:400; color:var(--ink-dim);">(+347 €/mes)</span>' : ''}</div>
+              <div class="cmeta">
+                <span><span class="pill ${cp.estado==='Activa'?'good':'mute'}">${cp.estado}</span></span>
+                <span>Activa desde: ${cp.desde}</span>
+              </div>
+              <div class="cspend">Inversión ejecutada: ${fmtMoney(cp.inversion, c.moneda)} de ${fmtMoney(cp.presupuesto, c.moneda)} presupuestados</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="modificar">
+        <div class="mod-body">
+          <div class="mod-note">Simula el efecto en <b>Total a Cobrar</b> antes de guardar — el cálculo real lo hace el motor de Airtable (Regla cuota × Multiplicador cobro), esto es solo una vista previa. Nada se guarda todavía: pendiente de conectar al webhook de n8n que escriba en Clientes.</div>
+
+          <div class="mod-row">
+            <div><div class="t">Contact Center</div><div class="d">${c.entidad.startsWith('LLC') && c.moneda==='USD' ? '0 € — LLC Extranjero no factura CC por huso horario' : (c.moneda==='USD' ? '175 USD/mes' : '150 €/mes')}, se cobra por campaña marcada, no por cliente</div></div>
+            <label class="switch"><input type="checkbox" id="mod-cc" ${c.cc?'checked':''}><span class="track"></span></label>
+          </div>
+
+          <div class="mod-row">
+            <div><div class="t">Campañas adicionales a añadir</div><div class="d">Cada una suma 347 €/mes (regla fija, sin importar entidad)</div></div>
+            <input type="number" id="mod-campanas" value="0" min="0" max="5" style="width:70px; font-family:'IBM Plex Mono'; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink);">
+          </div>
+
+          <div class="mod-row">
+            <div><div class="t">Referidos activos</div><div class="d">7% de descuento por cada uno (acumulable, tope 100%) — valor actual: ${c.referidosActivos}</div></div>
+            <input type="number" id="mod-referidos" value="${c.referidosActivos}" min="0" max="14" style="width:70px; font-family:'IBM Plex Mono'; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink);">
+          </div>
+
+          <div class="mod-calc" id="mod-preview"></div>
+
+          <div class="mod-footer">
+            <button type="button" class="ghost">Cancelar</button>
+            <button type="button" class="primary">Guardar cambios en Airtable</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="notas">
+        <div class="notes-body">
+          <div>
+            <div class="info-block-title" style="padding:0;">Añadir nota interna</div>
+            <div class="note-add" style="margin-top:8px;">
+              <textarea placeholder="Escribe una nota — quién habló con el cliente, qué se acordó..."></textarea>
+              <button type="button" class="primary">Guardar</button>
+            </div>
+          </div>
+          <div>
+            <div class="info-block-title" style="padding:0;">Notas</div>
+            <div style="margin-top:8px;">
+              ${(c.notas && c.notas.length) ? c.notas.map(n => `
+                <div class="note-item">
+                  <div class="avatar">${n.autor.slice(0,2).toUpperCase()}</div>
+                  <div class="body"><div class="who">${n.autor}<span class="when">${n.fecha}</span></div><div class="txt">${n.texto}</div></div>
+                </div>
+              `).join('') : '<div style="color:var(--ink-dim); font-size:0.82rem;">Sin notas todavía.</div>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  cont.innerHTML = html;
+
+  cont.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      cont.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      cont.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      cont.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  function updatePreview(){
+    const cc = $('mod-cc').checked;
+    const campanasExtra = parseInt($('mod-campanas').value || '0', 10);
+    const referidos = parseInt($('mod-referidos').value || '0', 10);
+    const ccCuota = c.moneda === 'USD' ? (c.entidad === 'LLC Extranjero' ? 0 : 175) : 150;
+    const cuotaBase = c.cuotaBase + (campanasExtra * 347);
+    const neta = cuotaBase + (cc ? ccCuota : 0);
+    const descuento = Math.min(referidos * 7, 100);
+    const total = neta * (1 - descuento/100);
+    $('mod-preview').innerHTML = `Cuota neta: <b>${fmtMoney(neta, c.moneda)}</b> · Descuento: <b>${descuento}%</b> · <b>Total a Cobrar previsto: ${fmtMoney(Math.round(total*100)/100, c.moneda)}</b>`;
+  }
+  ['mod-cc','mod-campanas','mod-referidos'].forEach(id => {
+    cont.querySelector('#'+id).addEventListener('input', updatePreview);
+  });
+  updatePreview();
+}
+
+$('searchBox').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
+document.querySelectorAll('.chip').forEach(ch => {
+  ch.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    ch.classList.add('active');
+    activeFilter = ch.dataset.filter;
+    renderList();
+  });
+});
+
+renderList();
+renderDetail();
+</script>
+</body>
+</html>
