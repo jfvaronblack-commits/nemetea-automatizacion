@@ -727,9 +727,10 @@ function renderDetail(){
 
           <div class="mod-calc" id="mod-preview"></div>
 
+          <div class="mod-note">Por ahora solo los <b>ajustes manuales</b> se aplican de verdad (como línea suelta en la próxima factura de Stripe). Contact Center, campañas adicionales y el descuento por referido todavía son solo vista previa — aplicarlos de verdad requiere dar de alta/baja suscripciones de Stripe, pendiente de construir.</div>
           <div class="mod-footer">
             <button type="button" class="ghost">Cancelar</button>
-            <button type="button" class="primary">Guardar cambios en Airtable</button>
+            <button type="button" class="primary" id="mod-aplicar-ajustes-btn">Aplicar ajustes manuales en Stripe</button>
           </div>
         </div>
       </div>
@@ -848,6 +849,37 @@ function renderDetail(){
     updatePreview();
   });
   renderAjustes();
+
+  const aplicarAjustesBtn = cont.querySelector('#mod-aplicar-ajustes-btn');
+  if (aplicarAjustesBtn) aplicarAjustesBtn.addEventListener('click', async () => {
+    const validos = ajustesManuales.filter(a => a.motivo.trim() && a.cantidad);
+    if (!validos.length){
+      alert('Añade al menos un ajuste con motivo y cantidad distinta de cero.');
+      return;
+    }
+    if (!confirm(`Esto va a crear ${validos.length} línea(s) suelta(s) en la próxima factura de ${c.nombre} en Stripe (dinero real). ¿Confirmas?`)) return;
+    aplicarAjustesBtn.disabled = true;
+    aplicarAjustesBtn.textContent = 'Aplicando…';
+    try {
+      const res = await fetch(`${N8N_BASE}/panel-clientes-aplicar-ajuste`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ record_id: c.id, ajustes: validos })
+      });
+      const data = await res.json();
+      if (data.ok){
+        alert(`Aplicado: ${data.creados} ajuste(s) creado(s) en Stripe.`);
+        ajustesManuales = [];
+        renderAjustes();
+        updatePreview();
+      } else {
+        alert('Error: ' + (data.error || 'no se pudo aplicar.'));
+      }
+    } catch (err){
+      alert('Error de conexión al aplicar los ajustes.');
+    }
+    aplicarAjustesBtn.disabled = false;
+    aplicarAjustesBtn.textContent = 'Aplicar ajustes manuales en Stripe';
+  });
 
   function updatePreview(){
     const cc = $('mod-cc').checked;
