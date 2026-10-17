@@ -397,6 +397,7 @@ textarea{width:100%;min-height:64px;background:var(--surface-2);border:1px solid
 var N8N_BASE = "https://n8n.nemetea.com/webhook";
 
 var ENTITIES = {slu:"SLU", eur:"en €", llc:"LLC"};
+function entLabel(ent){ return ENTITIES[ent] || 'Sin entidad'; }
 var CURRENCY = {slu:"EUR", eur:"EUR", llc:"USD"};
 var FX_USD_EUR = 0.92; // tipo de cambio orientativo, no es un feed en vivo
 var REASONS = {
@@ -491,7 +492,8 @@ function buildDerived(){
     NAMES[c.email] = label;
     CLIENT_INFO[c.email] = {
       since: c.cliente_desde, cuota: Number(c.cuota_mensual)||0,
-      phone: c.telefono || '—', ent: c.entidad, moneda: c.moneda || CURRENCY[c.entidad] || 'EUR'
+      phone: c.telefono || '—', ent: c.entidad, moneda: c.moneda || CURRENCY[c.entidad] || 'EUR',
+      codigo: c.codigo_nemetea || null, contacto: c.nombre_contacto || null
     };
   });
 
@@ -778,9 +780,10 @@ function renderClientsList(){
     var pill = open.length
       ? '<span class="badge b-'+severity(worst)+'">'+open.length+' abiertos</span>'
       : '<span class="badge b-good">Al día</span>';
+    var codigoTag = info && info.codigo ? '<span class="ex-flag" style="border-style:solid">'+escapeHtml(info.codigo)+'</span>' : '';
     return '<div class="client-card'+sel+'" data-client="'+escapeHtml(e)+'">'+
-      '<div class="cname">'+escapeHtml(NAMES[e]||e)+'</div>'+
-      '<div class="cmeta">'+ENTITIES[ent]+' · '+escapeHtml(e)+'</div>'+
+      '<div class="cname">'+escapeHtml(NAMES[e]||e)+codigoTag+'</div>'+
+      '<div class="cmeta">'+entLabel(ent)+' · '+escapeHtml(e)+'</div>'+
       '<div class="crow">'+pill+'<span class="mono" style="font-size:12px">'+(totalOpen? fmtMoney(totalOpen,"EUR"):'—')+'</span></div>'+
       '</div>';
   }).join('') || '<div class="empty-state">Sin clientes para este filtro.</div>';
@@ -830,8 +833,8 @@ function renderClientDetail(){
   }).join('');
 
   box.innerHTML =
-    '<div class="ficha-head"><div><h2>'+escapeHtml(NAMES[e]||e)+'</h2>'+
-    '<p>'+escapeHtml(e)+' · '+escapeHtml(info.phone||'—')+' · '+(info.since ? 'Cliente desde '+new Date(info.since).toLocaleDateString('es-ES') : 'Fecha de alta sin registrar')+' · '+ENTITIES[ent]+'</p></div></div>'+
+    '<div class="ficha-head"><div><h2>'+escapeHtml(NAMES[e]||e)+(info.codigo?' <span class="ex-flag" style="border-style:solid">'+escapeHtml(info.codigo)+'</span>':'')+'</h2>'+
+    '<p>'+(info.contacto?escapeHtml(info.contacto)+' · ':'')+escapeHtml(e)+' · '+escapeHtml(info.phone||'—')+' · '+(info.since ? 'Cliente desde '+new Date(info.since).toLocaleDateString('es-ES') : 'Fecha de alta sin registrar')+' · '+entLabel(ent)+'</p></div></div>'+
     '<div class="ficha-stats tiles">'+stats.map(function(t){
       return '<div class="tile"><div class="lbl">'+t.lbl+'</div><div class="val">'+t.val+'</div><div class="sub">'+t.sub+'</div></div>';
     }).join('')+'</div>'+
