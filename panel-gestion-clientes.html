@@ -486,6 +486,7 @@ const CLIENTES = [
 ];
 
 let selectedId = CLIENTES[0].id;
+let editandoDatos = false;
 let activeFilter = 'todos';
 let searchTerm = '';
 
@@ -520,9 +521,77 @@ function renderList(){
         </div>
         ${numAlertas(c)>0 ? `<span class="badge ${est}">${numAlertas(c)}</span>` : ''}
       `;
-      row.addEventListener('click', () => { selectedId = c.id; renderList(); renderDetail(); });
+      row.addEventListener('click', () => { selectedId = c.id; editandoDatos = false; renderList(); renderDetail(); });
       cont.appendChild(row);
     });
+}
+
+function buildDatosTab(c, editando){
+  const k = c.contacto || {};
+  if (!editando){
+    const item = (label, val) => `<div class="info-item"><span class="k">${label}</span><span class="v ${val ? '' : 'empty'}">${val || '— sin rellenar —'}</span></div>`;
+    return `
+      <div class="info-block">
+        <div class="info-block-title" style="display:flex; align-items:center; justify-content:space-between;">
+          <span>Contacto</span>
+          <button type="button" class="ghost sm" id="datos-edit-btn">✎ Editar datos</button>
+        </div>
+        <div class="info-grid">
+          ${item('Contacto principal', k.contacto1)}
+          ${item('Email', c.email)}
+          ${item('WhatsApp', k.whatsapp)}
+          ${item('Ciudad', k.ciudad)}
+          ${item('País', k.pais)}
+          ${item('Fecha de alta', c.fechaAlta)}
+        </div>
+      </div>
+      <div class="info-block info-divider">
+        <div class="info-block-title">Datos fiscales</div>
+        <div class="info-grid">
+          ${item('Entidad contratante', c.entidad)}
+          ${item('CIF / NIF', k.cif)}
+          ${item('Nombre fiscal', k.nombreFiscal)}
+          ${item('Dirección fiscal', k.direccion)}
+          ${item('Responsable comercial', k.comercial)}
+          ${item('Referidor', k.referidor)}
+        </div>
+      </div>
+    `;
+  }
+
+  const ENTIDADES = ['SL','LLC','Autónomo Eduardo','SL Canarias','LLC Extranjero','LLC España','Pendiente de Confirmar'];
+  const inp = (field, val) => `<input type="text" class="datos-input" data-field="${field}" value="${(val||'').toString().replace(/"/g,'&quot;')}">`;
+  return `
+    <div class="info-block">
+      <div class="info-block-title" style="display:flex; align-items:center; justify-content:space-between;">
+        <span>Contacto <span style="color:var(--warm); font-weight:400; text-transform:none; letter-spacing:0;">· editando</span></span>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><span class="k">Contacto principal</span>${inp('contacto1', k.contacto1)}</div>
+        <div class="info-item"><span class="k">Email</span>${inp('email', c.email)}</div>
+        <div class="info-item"><span class="k">WhatsApp</span>${inp('whatsapp', k.whatsapp)}</div>
+        <div class="info-item"><span class="k">Ciudad</span>${inp('ciudad', k.ciudad)}</div>
+        <div class="info-item"><span class="k">País</span>${inp('pais', k.pais)}</div>
+      </div>
+    </div>
+    <div class="info-block info-divider">
+      <div class="info-block-title">Datos fiscales</div>
+      <div class="info-grid">
+        <div class="info-item"><span class="k">Entidad contratante</span>
+          <select class="datos-input" data-field="entidad">${ENTIDADES.map(e=>`<option ${e===c.entidad?'selected':''}>${e}</option>`).join('')}</select>
+        </div>
+        <div class="info-item"><span class="k">CIF / NIF</span>${inp('cif', k.cif)}</div>
+        <div class="info-item"><span class="k">Nombre fiscal</span>${inp('nombreFiscal', k.nombreFiscal)}</div>
+        <div class="info-item"><span class="k">Dirección fiscal</span>${inp('direccion', k.direccion)}</div>
+        <div class="info-item"><span class="k">Responsable comercial</span>${inp('comercial', k.comercial)}</div>
+        <div class="info-item"><span class="k">Referidor</span>${inp('referidor', k.referidor)}</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; padding:4px 20px 16px;">
+      <button type="button" class="ghost sm" id="datos-cancelar-btn">Cancelar</button>
+      <button type="button" class="primary sm" id="datos-guardar-btn">Guardar cambios</button>
+    </div>
+  `;
 }
 
 function renderDetail(){
@@ -619,56 +688,29 @@ function renderDetail(){
       </div>
 
       <div class="tab-panel active" data-panel="datos">
-        ${(() => {
-          const k = c.contacto || {};
-          const item = (label, val) => `<div class="info-item"><span class="k">${label}</span><span class="v ${val ? '' : 'empty'}">${val || '— sin rellenar —'}</span></div>`;
-          return `
-          <div class="info-block">
-            <div class="info-block-title">Contacto</div>
-            <div class="info-grid">
-              ${item('Contacto principal', k.contacto1)}
-              ${item('Email', c.email)}
-              ${item('WhatsApp', k.whatsapp)}
-              ${item('Ciudad', k.ciudad)}
-              ${item('País', k.pais)}
-              ${item('Fecha de alta', c.fechaAlta)}
+        ${buildDatosTab(c, editandoDatos)}
+        <div class="info-block info-divider">
+          <div class="info-block-title">Forma de cobro</div>
+          <div class="info-grid">
+            <div class="info-item"><span class="k">Forma de cobro</span><span class="v">${c.formaPago} · día ${c.diaCobro}</span></div>
+          </div>
+        </div>
+        ${c.contrato && c.contrato.firmado ? `
+        <div class="contract-card">
+          <div class="cl">
+            <span class="cico">📄</span>
+            <div class="ct">
+              <div class="t">Contrato firmado</div>
+              <div class="d">Enviado ${c.contrato.fechaEnvio} · Firmado ${c.contrato.fechaFirma} · ${c.contrato.revisado ? 'Revisado por el comercial ✓' : 'Pendiente de revisión por el comercial'}</div>
             </div>
           </div>
-          <div class="info-block info-divider">
-            <div class="info-block-title">Datos fiscales</div>
-            <div class="info-grid">
-              ${item('Entidad contratante', c.entidad)}
-              ${item('CIF / NIF', k.cif)}
-              ${item('Nombre fiscal', k.nombreFiscal)}
-              ${item('Dirección fiscal', k.direccion)}
-              ${item('Responsable comercial', k.comercial)}
-              ${item('Referidor', k.referidor)}
-            </div>
+          <div class="cr">
+            <a class="ghost" href="${c.contrato.url}" target="_blank" rel="noopener">Ver en Assets ↗</a>
+            <button type="button" class="primary sm">Reenviar copia</button>
           </div>
-          <div class="info-block info-divider">
-            <div class="info-block-title">Forma de cobro</div>
-            <div class="info-grid">
-              ${item('Forma de cobro', c.formaPago + ' · día ' + c.diaCobro)}
-            </div>
-          </div>
-          ${c.contrato && c.contrato.firmado ? `
-          <div class="contract-card">
-            <div class="cl">
-              <span class="cico">📄</span>
-              <div class="ct">
-                <div class="t">Contrato firmado</div>
-                <div class="d">Enviado ${c.contrato.fechaEnvio} · Firmado ${c.contrato.fechaFirma} · ${c.contrato.revisado ? 'Revisado por el comercial ✓' : 'Pendiente de revisión por el comercial'}</div>
-              </div>
-            </div>
-            <div class="cr">
-              <a class="ghost" href="${c.contrato.url}" target="_blank" rel="noopener">Ver en Assets ↗</a>
-              <button type="button" class="primary sm">Reenviar copia</button>
-            </div>
-          </div>` : `
-          <div class="mod-note" style="margin:18px 20px 20px;">Sin contrato firmado todavía en este registro — se adjunta automáticamente en Assets en cuanto SignWell confirma la firma.</div>
-          `}
-          `;
-        })()}
+        </div>` : `
+        <div class="mod-note" style="margin:18px 20px 20px;">Sin contrato firmado todavía en este registro — se adjunta automáticamente en Assets en cuanto SignWell confirma la firma.</div>
+        `}
       </div>
 
       <div class="tab-panel" data-panel="pagos">
@@ -804,6 +846,29 @@ function renderDetail(){
       t.classList.add('active');
       cont.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
     });
+  });
+
+  // Edición de Contacto / Datos fiscales — en este diseño se guarda solo en
+  // memoria (CLIENTES). Pendiente de conectar al webhook real que escriba
+  // en la tabla Clientes de Airtable.
+  const editBtn = cont.querySelector('#datos-edit-btn');
+  if (editBtn) editBtn.addEventListener('click', () => { editandoDatos = true; renderDetail(); });
+
+  const cancelBtn = cont.querySelector('#datos-cancelar-btn');
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { editandoDatos = false; renderDetail(); });
+
+  const guardarDatosBtn = cont.querySelector('#datos-guardar-btn');
+  if (guardarDatosBtn) guardarDatosBtn.addEventListener('click', () => {
+    cont.querySelectorAll('.datos-input').forEach(inputEl => {
+      const field = inputEl.dataset.field;
+      const value = inputEl.value.trim();
+      if (field === 'email'){ c.email = value; }
+      else if (field === 'entidad'){ c.entidad = value; }
+      else { c.contacto[field] = value; }
+    });
+    editandoDatos = false;
+    renderList();
+    renderDetail();
   });
 
   // Ajustes manuales: lista libre de motivo + cantidad (+/-), sin categoría predeterminada.
