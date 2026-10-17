@@ -225,6 +225,17 @@ textarea{width:100%;min-height:64px;background:var(--surface-2);border:1px solid
   border:1px solid var(--border);background:var(--surface-2);color:var(--fg);border-radius:7px;padding:5px 9px;white-space:nowrap;flex:0 0 auto}
 .dl-btn:hover{border-color:var(--accent);color:var(--accent)}
 .dl-pending{font-size:11px;color:var(--fg-muted);flex:0 0 auto}
+.link-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
+.link-modal{background:var(--surface);border-radius:12px;padding:20px;max-width:460px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.link-modal h3{margin:0 0 12px;font-size:15px}
+.link-modal input{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--fg);border-radius:8px;
+  padding:9px 10px;font:inherit;font-family:'JetBrains Mono';font-size:12px}
+.link-modal-actions{display:flex;gap:8px;margin-top:12px}
+.link-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.link-form input[type="number"]{width:110px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg);
+  border-radius:7px;padding:6px 8px;font:inherit;font-size:12.5px}
+.link-form input[type="text"]{flex:1;min-width:160px;background:var(--surface-2);border:1px solid var(--border);color:var(--fg);
+  border-radius:7px;padding:6px 8px;font:inherit;font-size:12.5px}
 @media (max-width:720px){
   .rail{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .15s;z-index:30}
   .rail.open{transform:translateX(0)}
@@ -342,7 +353,7 @@ textarea{width:100%;min-height:64px;background:var(--surface-2);border:1px solid
       <div class="scrollx">
       <table class="impagos">
         <thead>
-          <tr><th>Cliente</th><th>Entidad</th><th>Importe</th><th>Días</th><th>Motivo</th><th>Estado</th><th>Asignado</th></tr>
+          <tr><th>Cliente</th><th>Entidad</th><th>Importe</th><th>Días</th><th>Motivo</th><th>Estado</th><th>Asignado</th><th>Enlace</th></tr>
         </thead>
         <tbody id="impagosBody"></tbody>
       </table>
@@ -719,6 +730,7 @@ function renderImpagos(){
       '<td><select class="mini-select st-'+c.status+'" data-field="estado" data-id="'+c.id+'">'+statusOpts+'</select></td>'+
       '<td><select class="mini-select" data-field="asignado" data-id="'+c.id+'">'+assigneeOpts+'</select>'+
         staleBadge(c)+'</td>'+
+      '<td><button class="act-btn" data-generar-enlace="1" data-entidad="'+c.ent+'" data-importe="'+c.amount+'" data-moneda="'+CURRENCY[c.ent]+'" data-descripcion="'+escapeHtml('Cobro pendiente — '+name)+'">Generar enlace</button></td>'+
       '</tr>';
   }).join('');
 }
@@ -844,6 +856,15 @@ function renderClientDetail(){
     '<div class="panel"><h2>Historial de pagos</h2>'+
     (pastRows || '<div class="empty-state">Sin pagos registrados todavía (pagos_historial vacío hasta conectar Holded).</div>')+
     '</div>'+
+    '<div class="panel"><h2>Generar enlace de pago</h2>'+
+    '<div class="link-form">'+
+    '<select id="linkEntidadSel" class="mini-select">'+
+      ['slu','eur','llc'].map(function(k){ return '<option value="'+k+'"'+(ent===k?' selected':'')+'>'+ENTITIES[k]+'</option>'; }).join('')+
+    '</select>'+
+    '<input type="number" id="linkImporteInput" placeholder="Importe" min="0" step="0.01" value="'+(info.cuota||'')+'">'+
+    '<input type="text" id="linkDescripcionInput" placeholder="Descripción (opcional)" value="'+escapeHtml('Cobro — '+(NAMES[e]||e))+'">'+
+    '<button class="act-btn" id="generarEnlaceLibreBtn">Generar enlace</button>'+
+    '</div></div>'+
     '<div class="panel"><h2>Notas del cliente</h2>'+
     '<div id="clientNotesList"><div style="color:var(--fg-muted);font-size:12.5px">Cargando notas…</div></div>'+
     '<textarea id="clientNoteInput" placeholder="Añadir nota sobre este cliente (ej. “Pidió cambiar de tarjeta, lo hará la semana que viene”)"></textarea>'+
@@ -879,6 +900,15 @@ function loadClientNotes(clienteId){
   });
 }
 document.getElementById('clientsDetail').addEventListener('click', function(e){
+  var linkBtn = e.target.closest('#generarEnlaceLibreBtn');
+  if(linkBtn){
+    var entidad = document.getElementById('linkEntidadSel').value;
+    var importe = Number(document.getElementById('linkImporteInput').value);
+    var moneda = CURRENCY[entidad] || 'EUR';
+    var descripcion = document.getElementById('linkDescripcionInput').value.trim() || 'Cobro Nemetea';
+    generarEnlacePago(entidad, importe, moneda, descripcion, linkBtn);
+    return;
+  }
   var btn = e.target.closest('#addClientNoteBtn');
   if(!btn) return;
   var clienteId = btn.getAttribute('data-cliente-id');
@@ -1028,8 +1058,54 @@ document.getElementById('dControls').addEventListener('change', handleFieldChang
 
 document.getElementById('impagosBody').addEventListener('click', function(e){
   var who = e.target.closest('[data-open]');
-  if(who) openDrawer(who.getAttribute('data-open'));
+  if(who){ openDrawer(who.getAttribute('data-open')); return; }
+  var btn = e.target.closest('[data-generar-enlace]');
+  if(btn){
+    generarEnlacePago(btn.getAttribute('data-entidad'), Number(btn.getAttribute('data-importe')),
+      btn.getAttribute('data-moneda'), btn.getAttribute('data-descripcion'), btn);
+  }
 });
+
+function generarEnlacePago(entidad, importe, moneda, descripcion, triggerBtn){
+  if(!entidad){ toast('Esta entidad todavía no está conectada al vigía, no puedo generar el enlace.', false); return; }
+  if(!importe || importe<=0){ toast('Pon un importe mayor que 0.', false); return; }
+  var original = triggerBtn ? triggerBtn.textContent : null;
+  if(triggerBtn){ triggerBtn.disabled = true; triggerBtn.textContent = 'Generando…'; }
+  apiPost('crm-pagos-generar-enlace', {entidad: entidad, importe: importe, moneda: moneda, descripcion: descripcion})
+    .then(function(resp){
+      if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = original; }
+      if(!resp || !resp.url){ toast('El enlace se generó pero no llegó la URL, revisa n8n.', false); return; }
+      mostrarEnlaceGenerado(resp.url);
+    }).catch(function(err){
+      if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = original; }
+      toast('No se pudo generar el enlace: ' + err.message, false);
+    });
+}
+function mostrarEnlaceGenerado(url){
+  var box = document.createElement('div');
+  box.className = 'link-modal-overlay';
+  box.innerHTML = '<div class="link-modal">'+
+    '<h3>Enlace de pago generado</h3>'+
+    '<input type="text" readonly id="generatedLinkInput" value="'+escapeHtml(url)+'">'+
+    '<div class="link-modal-actions">'+
+    '<button class="act-btn" id="copyLinkBtn">Copiar enlace</button>'+
+    '<button class="act-btn" id="closeLinkBtn">Cerrar</button>'+
+    '</div></div>';
+  document.body.appendChild(box);
+  var input = box.querySelector('#generatedLinkInput');
+  input.focus(); input.select();
+  box.querySelector('#copyLinkBtn').addEventListener('click', function(){
+    input.select();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){ toast('Enlace copiado', true); }).catch(function(){ document.execCommand('copy'); toast('Enlace copiado', true); });
+    } else {
+      document.execCommand('copy'); toast('Enlace copiado', true);
+    }
+  });
+  var close = function(){ box.remove(); };
+  box.querySelector('#closeLinkBtn').addEventListener('click', close);
+  box.addEventListener('click', function(e){ if(e.target===box) close(); });
+}
 
 document.getElementById('clientsList').addEventListener('click', function(e){
   var card = e.target.closest('.client-card');
