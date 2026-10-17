@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f4f5f3;
+  --surface: #ffffff;
+  --surface-2: #eceeea;
+  --border: #d9dcd5;
+  --fg: #1c231f;
+  --fg-muted: #5c655d;
+  --accent: #0f6e5c;
+  --accent-fg: #ffffff;
+  --good: #1b7a43;
+  --good-bg: #e4f3e9;
+  --warn: #9a6a05;
+  --warn-bg: #fbf0d9;
+  --bad: #a5281f;
+  --bad-bg: #fbe6e3;
+  --info-bg: #eef1ee;
+  --violet: #6d4aa8;
+  --violet-bg: #eee7f7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #13161a;
+    --surface: #1b1f23;
+    --surface-2: #22272c;
+    --border: #323a38;
+    --fg: #e9ece7;
+    --fg-muted: #9aa39a;
+    --accent: #2fae8f;
+    --accent-fg: #06211b;
+    --good: #4cc47f;
+    --good-bg: #132a1d;
+    --warn: #e3b23c;
+    --warn-bg: #2d2512;
+    --bad: #e8655c;
+    --bad-bg: #2d1917;
+    --info-bg: #20262a;
+    --violet: #b49bdf;
+    --violet-bg: #28223a;
+  }
+}
+
+body {
+  color: var(--fg);
+  background: var(--bg);
+  font-family: "Public Sans", system-ui, sans-serif;
+}
+
+.font-mono-data {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
