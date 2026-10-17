@@ -505,7 +505,8 @@ function buildDerived(){
     CLIENT_INFO[c.email] = {
       id: c.id, since: c.cliente_desde, cuota: Number(c.cuota_mensual)||0,
       phone: c.telefono || '—', ent: c.entidad, moneda: c.moneda || CURRENCY[c.entidad] || 'EUR',
-      codigo: c.codigo_nemetea || null, contacto: c.nombre_contacto || null
+      codigo: c.codigo_nemetea || null, contacto: c.nombre_contacto || null,
+      stripeCustomerId: c.stripe_customer_id || null
     };
   });
 
@@ -513,6 +514,7 @@ function buildDerived(){
     var cli = clientesById[co.cliente_id] || {};
     return {
       id: co.id, email: cli.email || '(cliente desconocido)', ent: co.entidad,
+      stripeCustomerId: cli.stripe_customer_id || null,
       amount: Number(co.importe)||0, days: daysSince(co.creado_stripe_en), example: !!co.example,
       status: co.estado, reason: co.motivo, assignee: co.asignado || '',
       promiseDate: co.fecha_promesa, lastMoved: co.last_moved, creadoStripeEn: co.creado_stripe_en,
@@ -730,7 +732,7 @@ function renderImpagos(){
       '<td><select class="mini-select st-'+c.status+'" data-field="estado" data-id="'+c.id+'">'+statusOpts+'</select></td>'+
       '<td><select class="mini-select" data-field="asignado" data-id="'+c.id+'">'+assigneeOpts+'</select>'+
         staleBadge(c)+'</td>'+
-      '<td><button class="act-btn" data-generar-enlace="1" data-entidad="'+c.ent+'" data-importe="'+c.amount+'" data-moneda="'+CURRENCY[c.ent]+'" data-descripcion="'+escapeHtml('Cobro pendiente — '+name)+'">Generar enlace</button></td>'+
+      '<td><button class="act-btn" data-generar-enlace="1" data-entidad="'+c.ent+'" data-importe="'+c.amount+'" data-moneda="'+CURRENCY[c.ent]+'" data-descripcion="'+escapeHtml('Cobro pendiente — '+name)+'" data-customer="'+escapeHtml(c.stripeCustomerId||'')+'" data-email="'+escapeHtml(c.email||'')+'">Generar enlace</button></td>'+
       '</tr>';
   }).join('');
 }
@@ -906,7 +908,8 @@ document.getElementById('clientsDetail').addEventListener('click', function(e){
     var importe = Number(document.getElementById('linkImporteInput').value);
     var moneda = CURRENCY[entidad] || 'EUR';
     var descripcion = document.getElementById('linkDescripcionInput').value.trim() || 'Cobro Nemetea';
-    generarEnlacePago(entidad, importe, moneda, descripcion, linkBtn);
+    var info = CLIENT_INFO[state.selectedClient] || {};
+    generarEnlacePago(entidad, importe, moneda, descripcion, linkBtn, info.stripeCustomerId, state.selectedClient);
     return;
   }
   var btn = e.target.closest('#addClientNoteBtn');
@@ -1062,30 +1065,35 @@ document.getElementById('impagosBody').addEventListener('click', function(e){
   var btn = e.target.closest('[data-generar-enlace]');
   if(btn){
     generarEnlacePago(btn.getAttribute('data-entidad'), Number(btn.getAttribute('data-importe')),
-      btn.getAttribute('data-moneda'), btn.getAttribute('data-descripcion'), btn);
+      btn.getAttribute('data-moneda'), btn.getAttribute('data-descripcion'), btn,
+      btn.getAttribute('data-customer') || null, btn.getAttribute('data-email') || null);
   }
 });
 
-function generarEnlacePago(entidad, importe, moneda, descripcion, triggerBtn){
+function generarEnlacePago(entidad, importe, moneda, descripcion, triggerBtn, customerId, email){
   if(!entidad){ toast('Esta entidad todavía no está conectada al vigía, no puedo generar el enlace.', false); return; }
   if(!importe || importe<=0){ toast('Pon un importe mayor que 0.', false); return; }
   var original = triggerBtn ? triggerBtn.textContent : null;
   if(triggerBtn){ triggerBtn.disabled = true; triggerBtn.textContent = 'Generando…'; }
-  apiPost('crm-pagos-generar-enlace', {entidad: entidad, importe: importe, moneda: moneda, descripcion: descripcion})
+  apiPost('crm-pagos-generar-enlace', {entidad: entidad, importe: importe, moneda: moneda, descripcion: descripcion, customerId: customerId||'', email: email||''})
     .then(function(resp){
       if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = original; }
       if(!resp || !resp.url){ toast('El enlace se generó pero no llegó la URL, revisa n8n.', false); return; }
-      mostrarEnlaceGenerado(resp.url);
+      mostrarEnlaceGenerado(resp.url, resp.linkedToCustomer);
     }).catch(function(err){
       if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = original; }
       toast('No se pudo generar el enlace: ' + err.message, false);
     });
 }
-function mostrarEnlaceGenerado(url){
+function mostrarEnlaceGenerado(url, linkedToCustomer){
   var box = document.createElement('div');
   box.className = 'link-modal-overlay';
+  var nota = linkedToCustomer
+    ? '<p style="color:var(--fg-muted);font-size:12px;margin:0 0 10px">Ligado a la ficha del cliente en Stripe. Caduca en 24h y es de un solo uso — si no lo paga a tiempo, genera uno nuevo.</p>'
+    : '<p style="color:var(--fg-muted);font-size:12px;margin:0 0 10px">Este cliente no tiene aún un ID de cliente de Stripe asociado, así que el enlace no queda ligado a su ficha (solo lleva su email precargado). Caduca en 24h y es de un solo uso.</p>';
   box.innerHTML = '<div class="link-modal">'+
     '<h3>Enlace de pago generado</h3>'+
+    nota+
     '<input type="text" readonly id="generatedLinkInput" value="'+escapeHtml(url)+'">'+
     '<div class="link-modal-actions">'+
     '<button class="act-btn" id="copyLinkBtn">Copiar enlace</button>'+
