@@ -246,6 +246,15 @@
     line-height:1.6; }
   .mod-calc b{ font-family:"IBM Plex Mono"; }
 
+  .ajuste-row{ display:flex; gap:8px; align-items:center; }
+  .ajuste-row input[type="text"]{ flex:1; font-family:"IBM Plex Sans"; font-size:0.82rem; padding:7px 9px;
+    border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); min-width:0; }
+  .ajuste-row input[type="number"]{ width:110px; font-family:"IBM Plex Mono"; font-size:0.82rem; padding:7px 9px;
+    border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); flex:none; }
+  .ajuste-row .ajuste-remove{ background:none; border:1px solid var(--line); border-radius:6px; color:var(--ink-dim);
+    cursor:pointer; padding:6px 10px; flex:none; font-size:0.8rem; }
+  .ajuste-empty{ font-size:0.76rem; color:var(--ink-dim); padding:4px 0; }
+
   .notes-body{ padding:16px 20px 20px; display:flex; flex-direction:column; gap:16px; }
   .note-add{ display:flex; gap:8px; }
   .note-add textarea{ flex:1; font-family:"IBM Plex Sans"; font-size:0.84rem; padding:8px 10px; border:1px solid var(--line);
@@ -727,6 +736,15 @@ function renderDetail(){
             <input type="number" id="mod-referidos" value="${c.referidosActivos}" min="0" max="14" style="width:70px; font-family:'IBM Plex Mono'; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink);">
           </div>
 
+          <div class="mod-row" style="flex-direction:column; align-items:stretch; gap:10px;">
+            <div>
+              <div class="t">Ajustes manuales a la cuota</div>
+              <div class="d">Suma o resta libre con motivo a mano — para casos puntuales que no cubren las reglas automáticas (penalización por entrega tardía, cortesía, descuento comercial, etc.). Cada fila se guarda luego como su propio registro en Pagos (Concepto de ajuste: Otro).</div>
+            </div>
+            <div id="mod-ajustes-list"></div>
+            <button type="button" class="ghost sm" id="mod-ajustes-add" style="align-self:flex-start;">+ Añadir ajuste</button>
+          </div>
+
           <div class="mod-calc" id="mod-preview"></div>
 
           <div class="mod-footer">
@@ -788,6 +806,37 @@ function renderDetail(){
     });
   });
 
+  // Ajustes manuales: lista libre de motivo + cantidad (+/-), sin categoría predeterminada.
+  let ajustesManuales = [];
+
+  function renderAjustes(){
+    const listEl = $('mod-ajustes-list');
+    if (!ajustesManuales.length){
+      listEl.innerHTML = '<div class="ajuste-empty">Sin ajustes manuales todavía.</div>';
+      return;
+    }
+    listEl.innerHTML = ajustesManuales.map((a, i) => `
+      <div class="ajuste-row" data-idx="${i}">
+        <input type="text" class="ajuste-motivo" placeholder="Motivo (ej. penalización por entrega tardía de material)" value="${a.motivo.replace(/"/g,'&quot;')}">
+        <input type="number" class="ajuste-cantidad" placeholder="€" step="0.01" value="${a.cantidad}">
+        <button type="button" class="ajuste-remove" title="Quitar">✕</button>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.ajuste-row').forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      row.querySelector('.ajuste-motivo').addEventListener('input', (e) => { ajustesManuales[idx].motivo = e.target.value; });
+      row.querySelector('.ajuste-cantidad').addEventListener('input', (e) => { ajustesManuales[idx].cantidad = parseFloat(e.target.value || '0'); updatePreview(); });
+      row.querySelector('.ajuste-remove').addEventListener('click', () => { ajustesManuales.splice(idx, 1); renderAjustes(); updatePreview(); });
+    });
+  }
+
+  $('mod-ajustes-add').addEventListener('click', () => {
+    ajustesManuales.push({ motivo:'', cantidad:0 });
+    renderAjustes();
+    updatePreview();
+  });
+  renderAjustes();
+
   function updatePreview(){
     const cc = $('mod-cc').checked;
     const campanasExtra = parseInt($('mod-campanas').value || '0', 10);
@@ -796,8 +845,10 @@ function renderDetail(){
     const cuotaBase = c.cuotaBase + (campanasExtra * 347);
     const neta = cuotaBase + (cc ? ccCuota : 0);
     const descuento = Math.min(referidos * 7, 100);
-    const total = neta * (1 - descuento/100);
-    $('mod-preview').innerHTML = `Cuota neta: <b>${fmtMoney(neta, c.moneda)}</b> · Descuento: <b>${descuento}%</b> · <b>Total a Cobrar previsto: ${fmtMoney(Math.round(total*100)/100, c.moneda)}</b>`;
+    const sumaAjustes = ajustesManuales.reduce((acc, a) => acc + (a.cantidad || 0), 0);
+    const total = (neta * (1 - descuento/100)) + sumaAjustes;
+    const ajustesTxt = sumaAjustes !== 0 ? ` · Ajustes manuales: <b>${sumaAjustes >= 0 ? '+' : ''}${fmtMoney(sumaAjustes, c.moneda)}</b>` : '';
+    $('mod-preview').innerHTML = `Cuota neta: <b>${fmtMoney(neta, c.moneda)}</b> · Descuento: <b>${descuento}%</b>${ajustesTxt} · <b>Total a Cobrar previsto: ${fmtMoney(Math.round(total*100)/100, c.moneda)}</b>`;
   }
   ['mod-cc','mod-campanas','mod-referidos'].forEach(id => {
     cont.querySelector('#'+id).addEventListener('input', updatePreview);
