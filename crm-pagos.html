@@ -492,7 +492,7 @@ function buildDerived(){
     var label = c.nombre || (c.email ? c.email.split('@')[0] : c.id);
     NAMES[c.email] = label;
     CLIENT_INFO[c.email] = {
-      since: c.cliente_desde, cuota: Number(c.cuota_mensual)||0,
+      id: c.id, since: c.cliente_desde, cuota: Number(c.cuota_mensual)||0,
       phone: c.telefono || '—', ent: c.entidad, moneda: c.moneda || CURRENCY[c.entidad] || 'EUR',
       codigo: c.codigo_nemetea || null, contacto: c.nombre_contacto || null
     };
@@ -843,8 +843,64 @@ function renderClientDetail(){
     '<div class="panel"><h2>Historial de recuperaciones</h2><ul class="timeline">'+(recRows||'<li>Sin recuperaciones registradas.</li>')+'</ul></div>'+
     '<div class="panel"><h2>Historial de pagos</h2>'+
     (pastRows || '<div class="empty-state">Sin pagos registrados todavía (pagos_historial vacío hasta conectar Holded).</div>')+
-    '</div>';
+    '</div>'+
+    '<div class="panel"><h2>Notas del cliente</h2>'+
+    '<div id="clientNotesList"><div style="color:var(--fg-muted);font-size:12.5px">Cargando notas…</div></div>'+
+    '<textarea id="clientNoteInput" placeholder="Añadir nota sobre este cliente (ej. “Pidió cambiar de tarjeta, lo hará la semana que viene”)"></textarea>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:8px">'+
+    '<select id="clientNoteAuthorSel" class="mini-select"><option value="Tu">Tú</option><option value="Eduardo">Eduardo</option></select>'+
+    '<button class="act-btn" id="addClientNoteBtn" data-cliente-id="'+escapeHtml(info.id||'')+'">Guardar nota</button>'+
+    '</div></div>';
+
+  if(info.id) loadClientNotes(info.id);
 }
+
+var clientNotesCache = {};
+function renderClientNotes(clienteId){
+  var box = document.getElementById('clientNotesList');
+  if(!box) return;
+  var notes = clientNotesCache[clienteId] || [];
+  box.innerHTML = notes.map(function(n){
+    var when = n.created_at ? new Date(n.created_at).toLocaleString('es-ES') : 'ahora';
+    var who = n.autor==='Tu' ? 'Tú' : (n.autor||'—');
+    return '<div class="note-item"><b>'+escapeHtml(who)+' · '+escapeHtml(when)+'</b><br>'+escapeHtml(n.texto)+'</div>';
+  }).join('') || '<div style="color:var(--fg-muted);font-size:12.5px;margin-bottom:6px">Sin notas todavía.</div>';
+}
+function loadClientNotes(clienteId){
+  renderClientNotes(clienteId);
+  apiGet('crm-pagos-notas-cliente?cliente_id=' + encodeURIComponent(clienteId)).then(function(rows){
+    clientNotesCache[clienteId] = Array.isArray(rows) ? rows : [];
+    if(state.selectedClient && CLIENT_INFO[state.selectedClient] && CLIENT_INFO[state.selectedClient].id===clienteId){
+      renderClientNotes(clienteId);
+    }
+  }).catch(function(err){
+    var box = document.getElementById('clientNotesList');
+    if(box) box.innerHTML = '<div style="color:var(--bad);font-size:12.5px">No se pudieron cargar las notas: '+escapeHtml(err.message)+'</div>';
+  });
+}
+document.getElementById('clientsDetail').addEventListener('click', function(e){
+  var btn = e.target.closest('#addClientNoteBtn');
+  if(!btn) return;
+  var clienteId = btn.getAttribute('data-cliente-id');
+  var ta = document.getElementById('clientNoteInput');
+  var autor = document.getElementById('clientNoteAuthorSel').value;
+  var texto = ta.value.trim();
+  if(!clienteId || !texto) return;
+  btn.disabled = true;
+  apiPost('crm-pagos-nota-cliente', {cliente_id: clienteId, autor: autor, texto: texto}).then(function(){
+    ta.value = '';
+    btn.disabled = false;
+    toast('Nota guardada', true);
+    return apiGet('crm-pagos-notas-cliente?cliente_id=' + encodeURIComponent(clienteId));
+  }).then(function(rows){
+    if(!rows) return;
+    clientNotesCache[clienteId] = Array.isArray(rows) ? rows : [];
+    renderClientNotes(clienteId);
+  }).catch(function(err){
+    btn.disabled = false;
+    toast('No se pudo guardar la nota: ' + err.message, false);
+  });
+});
 
 function renderClientes(){ renderClientsList(); renderClientDetail(); }
 
