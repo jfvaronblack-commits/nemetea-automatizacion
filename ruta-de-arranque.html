@@ -297,6 +297,8 @@
     cursor:pointer; white-space:nowrap; font-family:"IBM Plex Sans";
   }
   button.stripe-cta:disabled{ background:var(--pending-soft); color:var(--ink-dim); cursor:not-allowed; }
+  button.stripe-cta.danger{ background:var(--critical); color:#fff; }
+  button.stripe-cta.danger:disabled{ background:var(--pending-soft); color:var(--ink-dim); }
   .stripe-hint{
     font-size:0.78rem; color:var(--warm); background:var(--warm-soft);
     border-radius:8px; padding:10px 12px; margin-top:12px; line-height:1.5;
@@ -1614,9 +1616,14 @@ function renderCbDetail(){
       <h3>Segundo pago — datos reales de Airtable/Stripe</h3>
       ${cobrado ? `
         <div class="stripe-card confirmed">
-          <h4>Enlace de pago — Stripe Checkout</h4>
+          <div class="stripe-card-head">
+            <h4>Enlace de pago — Stripe Checkout</h4>
+            ${c.estadoCliente !== "Baja" ? `<button type="button" class="stripe-cta danger" id="cb-real-cancelar-suscripcion">Dar de baja →</button>` : ""}
+          </div>
           <div class="confirmed-line">✓ Cobro confirmado por Stripe</div>
           ${c.pago2LinkEnviadoFecha ? `<div class="method-line">Último proceso: ${c.pago2LinkEnviadoFecha}</div>` : ""}
+          ${c.estadoCliente === "Baja" ? `<div class="status">Suscripción cancelada en Stripe${c.fechaBaja ? " — " + c.fechaBaja : ""}</div>` : ""}
+          <p class="stripe-hint">Cancela la suscripción de permanencia en Stripe (modo TEST) — los cobros de los meses que falten no se generarán.</p>
         </div>
       ` : `
         <div class="price-row">
@@ -1733,6 +1740,35 @@ function renderCbDetail(){
         alert("Error de red: " + e.message);
         sendBtn.disabled = false;
         sendBtn.textContent = "Enviar enlace de pago →";
+        return;
+      }
+      await cargarClientesReales();
+    });
+  }
+
+  const cancelarBtn = detail.querySelector("#cb-real-cancelar-suscripcion");
+  if (cancelarBtn){
+    cancelarBtn.addEventListener("click", async ()=>{
+      if (!confirm(`¿Dar de baja a ${c.empresa}? Se cancelará la suscripción de Stripe y no se generarán los cobros de los meses que falten.`)) return;
+      cancelarBtn.disabled = true;
+      cancelarBtn.textContent = "Cancelando…";
+      try {
+        const res = await fetch(`${N8N_BASE}/cancelar-suscripcion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record_id: c.id })
+        });
+        const data = await res.json();
+        if (!data.ok){
+          alert("Error: " + (data.error || "desconocido"));
+          cancelarBtn.disabled = false;
+          cancelarBtn.textContent = "Dar de baja →";
+          return;
+        }
+      } catch(e){
+        alert("Error de red: " + e.message);
+        cancelarBtn.disabled = false;
+        cancelarBtn.textContent = "Dar de baja →";
         return;
       }
       await cargarClientesReales();
