@@ -297,7 +297,7 @@
     <button type="button" class="logout-btn" id="logout-btn">Cerrar sesión</button>
     <span class="mockbadge">Conectado a Airtable · TEST</span>
   </div>
-  <p class="subhead">Vista única por cliente: datos de alta, campañas y modificación de suscripción, leídos en vivo de Airtable a través de n8n ("Interfaz - Panel Clientes"). Los importes y reglas de esta pantalla siguen el motor de cálculo real de la tabla Clientes (Regla cuota + Multiplicador cobro) — nada se recalcula aquí por su cuenta. Histórico de pagos, alertas, contrato y notas todavía no tienen webhook propio y aparecen vacíos.</p>
+  <p class="subhead">Vista única por cliente: datos de alta, campañas, modificación de suscripción e histórico de pagos, leídos en vivo de Airtable y Stripe a través de n8n ("Interfaz - Panel Clientes"). Los importes y reglas de esta pantalla siguen el motor de cálculo real de la tabla Clientes (Regla cuota + Multiplicador cobro) — nada se recalcula aquí por su cuenta. Alertas, contrato y notas todavía no tienen webhook propio y aparecen vacíos.</p>
 
   <div class="app">
     <div class="panel list-panel">
@@ -383,6 +383,7 @@ async function fetchListaClientes(){
       contacto: {}, campanas: [], actividades: [],
       alertas: [], pagos: [], notas: [], contrato: null,
       fechaAlta: null, detalleCargado: false,
+      pagosCargado: false, pagosError: null,
     }));
     listaCargada = true;
     if (!selectedId && CLIENTES.length) selectedId = CLIENTES[0].id;
@@ -407,6 +408,21 @@ async function fetchDetalleCliente(id){
   }
   detalleCargando = false;
   renderDetail();
+  fetchHistoricoPagos(id);
+}
+
+async function fetchHistoricoPagos(id){
+  try {
+    const res = await fetch(`${API_BASE}/panel-clientes-historico-pagos?record_id=${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const c = CLIENTES.find(x => x.id === id);
+    if (c) { c.pagos = data.pagos || []; c.pagosCargado = true; c.pagosError = null; }
+  } catch (err) {
+    const c = CLIENTES.find(x => x.id === id);
+    if (c) { c.pagosCargado = true; c.pagosError = 'No se pudo cargar el histórico de pagos desde Stripe. ' + err.message; }
+  }
+  if (selectedId === id) renderDetail();
 }
 
 let selectedId = null;
@@ -662,26 +678,32 @@ function renderDetail(){
 
       <div class="tab-panel" data-panel="pagos">
         <div class="section-head">
-          <h3>Calendario de cobros (tabla Pagos de Airtable)</h3>
-          <span class="n">${c.pagos.length} cuotas</span>
+          <h3>Histórico de pagos (Stripe)</h3>
+          <span class="n">${c.pagosCargado ? c.pagos.length + ' cargo' + (c.pagos.length===1?'':'s') : '…'}</span>
         </div>
+        ${!c.pagosCargado ? `
+        <div style="padding:16px 20px; color:var(--ink-dim); font-size:0.82rem;">Cargando histórico de pagos desde Stripe…</div>
+        ` : c.pagosError ? `
+        <div style="padding:16px 20px; color:var(--critical); font-size:0.82rem;">${c.pagosError}</div>
+        ` : !c.pagos.length ? `
+        <div style="padding:16px 20px; color:var(--ink-dim); font-size:0.82rem;">Sin cargos en Stripe para este cliente.</div>
+        ` : `
         <table class="data">
-          <thead><tr><th>Fecha prevista</th><th>Nº cuota</th><th>Tipo</th><th>Estado</th><th class="num">Importe</th><th></th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Nº cuota</th><th>Tipo</th><th>Estado</th><th class="num">Importe</th><th></th></tr></thead>
           <tbody>
             ${c.pagos.map(p => `
               <tr>
                 <td class="date">${p.fecha}</td>
                 <td class="num">${p.nCuota}</td>
                 <td>${p.tipo}</td>
-                <td><span class="pill ${p.estado==='Pagado'?'good':(p.estado==='Previsto'||p.estado==='Enlace enviado'?'mute':'crit')}">${p.estado}</span></td>
+                <td><span class="pill ${p.estado==='Pagado'?'good':(p.estado==='Previsto'?'mute':'crit')}">${p.estado}</span>${p.detalleError ? ` <span style="color:var(--ink-dim); font-size:0.72rem;">— ${p.detalleError}</span>` : ''}</td>
                 <td class="amount">${fmtMoney(p.importe, c.moneda)}</td>
-                <td class="rowactions">
-                  ${p.estado==='Fallido' ? '<button class="ghost sm">Reenviar enlace</button>' : ''}
-                </td>
+                <td class="rowactions"></td>
               </tr>
             `).join('')}
           </tbody>
         </table>
+        `}
       </div>
 
       <div class="tab-panel" data-panel="campanas">
