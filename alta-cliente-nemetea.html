@@ -715,6 +715,12 @@ const FETCH_TIMEOUT_MS = 15000;
 // record_id de Airtable — null hasta que "Guardar datos" tenga éxito una vez.
 let airtableRecordId = null;
 
+// ID Nemetea visible (NM-XXX), el consecutivo real que ya se usa en el resto del CRM —
+// lo asigna guardar-datos-cliente la primera vez que se crea el cliente (nunca se
+// recalcula al actualizar). airtableRecordId sigue siendo la clave interna de Airtable
+// que necesitan el resto de llamadas; este campo es solo para mostrar.
+let clienteIdOrigen = null;
+
 // true en cuanto "Enviar contrato a SignWell" tiene éxito una vez — se pone a false
 // otra vez si se guardan cambios en el bloque 1 después de haber enviado, para forzar
 // un reenvío con los datos corregidos (ver guardarDatos()).
@@ -766,6 +772,7 @@ function guardarEstadoAlta(){
   const activo = document.querySelector('#mk-tipoentrada .pill-opt.active');
   const estado = {
     recordId: airtableRecordId,
+    idOrigen: clienteIdOrigen,
     campos,
     tipoEntrada: activo ? activo.dataset.v : null,
     contratoEnviado,
@@ -873,7 +880,11 @@ async function guardarDatos(){
     }
 
     airtableRecordId = data.record_id;
-    $('mk-id-nemetea').textContent = airtableRecordId;
+    // id_origen (NM-XXX) solo viene en la respuesta la primera vez que se crea el cliente —
+    // al actualizar un cliente ya existente, guardar-datos-cliente también lo devuelve
+    // (lee el valor ya guardado), así que esto cubre ambos casos.
+    if (data.id_origen) clienteIdOrigen = data.id_origen;
+    $('mk-id-nemetea').textContent = clienteIdOrigen || airtableRecordId;
     $('mk-ids-card').style.opacity = '1';
 
     let saveMsg = '<strong>✓ Guardado en Airtable</strong> — registro <span class="rec">' + esc(airtableRecordId) + '</span>. Puedes seguir editando y volver a pulsar «Guardar datos» para actualizarlo.';
@@ -1556,7 +1567,8 @@ function restaurarAlta(){
 
     if(st.recordId){
       airtableRecordId = st.recordId;
-      $('mk-id-nemetea').textContent = airtableRecordId;
+      clienteIdOrigen = st.idOrigen || null;
+      $('mk-id-nemetea').textContent = clienteIdOrigen || airtableRecordId;
       $('mk-ids-card').style.opacity = '1';
       $('mk-btn-guardar').textContent = 'Actualizar datos →';
       setSaveStatus('ok', '<strong>↺ Alta retomada</strong> — registro <span class="rec">' + esc(airtableRecordId) +
