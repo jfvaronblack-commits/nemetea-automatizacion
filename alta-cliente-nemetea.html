@@ -442,7 +442,7 @@ html.mk-authed #mk-login-gate{ display:none; }
 
           <div class="grid2">
             <div class="field"><label>Entidad contratante<span class="req">*</span></label>
-              <select id="mk-entidad"><option>SL (España)</option><option>LLC España</option><option>LLC (EE. UU.)</option><option>Autónomo (en extinción)</option></select></div>
+              <select id="mk-entidad"><option>SL (España)</option><option>LLC España</option><option>LLC (EE. UU.)</option></select></div>
             <div class="field"><label>CIF / NIF<span class="req">*</span><span class="newtag">nuevo</span></label>
               <span class="hint">Campo añadido — el closer ya lo pedía, ahora vive en Airtable</span>
               <input type="text" value="45 118 302-Q" id="mk-cif"></div>
@@ -801,7 +801,10 @@ function borrarEstadoAlta(){
 // Mapea las opciones de los <select>/pills de la maqueta a los valores exactos
 // que existen en los campos singleSelect de Airtable (Clientes, tbl6noqdseYfm4czi).
 const MAP_IDIOMA = { 'Español':'Español', 'English':'Inglés', 'Català':'Otro' };
-const MAP_ENTIDAD = { 'SL (España)':'SL', 'LLC España':'LLC España', 'LLC (EE. UU.)':'LLC', 'Autónomo (en extinción)':'Autónomo Eduardo' };
+// "Autónomo Eduardo" se retiró del desplegable — entidad en extinción, no soportada
+// por los workflows de Stripe (Crear Cliente / Enviar Enlace de Pago), no se ofrece
+// para altas nuevas.
+const MAP_ENTIDAD = { 'SL (España)':'SL', 'LLC España':'LLC España', 'LLC (EE. UU.)':'LLC' };
 const MAP_TIPO_ENTRADA = { estandar:'Estándar', formacion:'Formación', mesgratis:'Primer mes gratis' };
 const MAP_METODO_COBRO = { '27':'SEPA', '28':'Tarjeta' };
 
