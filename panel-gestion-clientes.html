@@ -820,6 +820,40 @@ function renderDetail(){
     });
   });
 
+  // Dar de baja una campaña — cancela la suscripción de Stripe del cliente
+  // (solo si es su única campaña activa) y marca Baja en Airtable (campaña
+  // y, al no quedar ninguna activa, también el cliente). Webhook
+  // "panel-clientes-dar-de-baja-campana".
+  cont.querySelectorAll('[data-action="dar-de-baja"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const campanaId = btn.dataset.campanaId;
+      const ok = confirm('¿Dar de baja esta campaña?\n\nEsto cancelará de forma inmediata la suscripción de Stripe del cliente (si esta es su única campaña activa) y no se puede deshacer desde aquí. ¿Continuar?');
+      if (!ok) return;
+
+      btn.disabled = true;
+      const textoOriginal = btn.textContent;
+      btn.textContent = 'Dando de baja…';
+      try {
+        const res = await fetch(`${API_BASE}/panel-clientes-dar-de-baja-campana`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campana_id: campanaId }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+        alert(data.mensaje || 'Campaña dada de baja.');
+        c.detalleCargado = false;
+        listaCargada = false;
+        fetchListaClientes();
+        fetchDetalleCliente(c.id);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+        alert('No se pudo dar de baja la campaña: ' + err.message);
+      }
+    });
+  });
+
   // Edición de Contacto / Datos fiscales — guarda en Airtable a través del
   // webhook "panel-clientes-guardar-datos" (PATCH real en la tabla Clientes).
   const AIRTABLE_FIELD_MAP = {
