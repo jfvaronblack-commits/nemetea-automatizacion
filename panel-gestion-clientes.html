@@ -295,9 +295,9 @@
       <span class="sub">Nemetea · ficha única por cliente</span>
     </div>
     <button type="button" class="logout-btn" id="logout-btn">Cerrar sesión</button>
-    <span class="mockbadge">Diseño · datos de ejemplo</span>
+    <span class="mockbadge">Conectado a Airtable · TEST</span>
   </div>
-  <p class="subhead">Vista única por cliente: datos de alta, calendario de cobros (Airtable ↔ Stripe), campañas y modificación de suscripción. Los importes y reglas de esta pantalla siguen el motor de cálculo real de la tabla Clientes (Regla cuota + Multiplicador cobro) — nada se recalcula aquí por su cuenta. Sin conexión a Airtable todavía: es la maqueta de interfaz antes de enganchar los webhooks de n8n.</p>
+  <p class="subhead">Vista única por cliente: datos de alta, campañas y modificación de suscripción, leídos en vivo de Airtable a través de n8n ("Interfaz - Panel Clientes"). Los importes y reglas de esta pantalla siguen el motor de cálculo real de la tabla Clientes (Regla cuota + Multiplicador cobro) — nada se recalcula aquí por su cuenta. Histórico de pagos, alertas, contrato y notas todavía no tienen webhook propio y aparecen vacíos.</p>
 
   <div class="app">
     <div class="panel list-panel">
@@ -317,8 +317,8 @@
   </div>
 
   <footer class="note">
-    <span>Nemetea — panel de gestión de clientes (diseño)</span>
-    <span>Fuente de datos real: Airtable · base appEZnB8ZDVAcBDAV</span>
+    <span>Nemetea — panel de gestión de clientes</span>
+    <span>Fuente de datos real: Airtable · base appEZnB8ZDVAcBDAV · vía n8n ("Interfaz - Panel Clientes")</span>
   </footer>
 
   </div>
@@ -338,6 +338,7 @@ const AUTH_STORAGE_KEY = "panelClientesAuth";
 function showApp(){
   $("login-screen").classList.add("hidden");
   $("app-root").classList.remove("hidden");
+  fetchListaClientes();
 }
 function showLogin(){
   $("app-root").classList.add("hidden");
@@ -358,137 +359,61 @@ function showLogin(){
 })();
 
 // ---------------------------------------------------------------
-// DATOS DE EJEMPLO — campos y reglas alineados con el esquema real
-// de Airtable (base appEZnB8ZDVAcBDAV): Entidad Contratante, Moneda,
-// Forma de pago, Total a Cobrar (EUR/USD), Descuento Referidos (calc),
-// Contact Center a Cobrar (calc), Fecha Fin Permanencia, y la tabla
-// Pagos con Estado: Previsto / Enlace enviado / Pagado / Fallido / Anulado.
+// Conexión real: webhooks del flujo n8n "Interfaz - Panel Clientes"
+// (lee/escribe Airtable, base appEZnB8ZDVAcBDAV; ajustes manuales
+// se crean como invoice items en Stripe). Los campos de pagos,
+// alertas, contrato y notas todavía no tienen webhook propio: se
+// quedan vacíos hasta que se conecte ese tramo.
 // ---------------------------------------------------------------
-const CLIENTES = [
-  {
-    id:'espacio-raiz', nombre:'Espacio Raíz Fisioterapia', email:'contacto@espacioraiz.example',
-    entidad:'SL', moneda:'EUR', formaPago:'Tarjeta', diaCobro:28,
-    cuotaBase:647, cc:true, ccCuota:150,
-    referidosActivos:0, descuentoReferidos:0,
-    totalACobrar:797, // cuotaBase + CC, sin descuento
-    campanas:[{n:'Campaña principal', estado:'Activa', desde:'12/03/2026', inversion:650, presupuesto:650}],
-    fechaAlta:'09/03/2026', fechaFinPermanencia:null,
-    contacto:{ contacto1:'Nadia Ferrer Solís', whatsapp:'+34 611 220 384', ciudad:'Murcia', pais:'España',
-      cif:'B-45118302', nombreFiscal:'Espacio Raíz Fisioterapia SL', direccion:'Calle Mayor 14, 3ºB, 30001, Murcia',
-      comercial:'Camila Duarte', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaEnvio:'08/03/2026', fechaFirma:'09/03/2026', revisado:true, url:'#' },
-    alertas:[],
-    actividades:[
-      {fecha:'27/08/2026 09:12', tipo:'Email', detalle:'Recibo de cobro — ciclo natural agosto', resultado:'Enviado'},
-      {fecha:'09/03/2026 18:40', tipo:'SignWell', detalle:'Contrato enviado para firma', resultado:'Firmado'},
-    ],
-    pagos:[
-      {fecha:'28/08/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:797},
-      {fecha:'28/07/2026', nCuota:5, tipo:'Mensual', estado:'Pagado', importe:797},
-      {fecha:'28/09/2026', nCuota:7, tipo:'Mensual', estado:'Previsto', importe:797},
-    ],
-    notas:[ {autor:'Camila', fecha:'15/03/2026', texto:'Cliente muy satisfecha con los leads del primer mes.'} ],
-  },
-  {
-    id:'kado-estetica', nombre:'Kado Estética', email:'hola@kadoestetica.example',
-    entidad:'Autónomo Eduardo', moneda:'EUR', formaPago:'SEPA', diaCobro:27,
-    cuotaBase:497, cc:false, ccCuota:0,
-    referidosActivos:1, descuentoReferidos:7,
-    totalACobrar:462.21, // 497 * (1-0.07)
-    campanas:[{n:'Campaña principal', estado:'Activa', desde:'02/05/2026', inversion:150, presupuesto:150}],
-    fechaAlta:'02/05/2026', fechaFinPermanencia:'02/08/2026',
-    contacto:{ contacto1:'Kadiatou Diallo', whatsapp:'+34 622 019 447', ciudad:'Granada', pais:'España',
-      cif:'', nombreFiscal:'', direccion:'', comercial:'Elena Reyes', referidor:'Clínica Dental Sur' },
-    contrato:{ firmado:true, fechaEnvio:'28/04/2026', fechaFirma:'02/05/2026', revisado:true, url:'#' },
-    alertas:[
-      {tipo:'crit', titulo:'Cobro fallido — cuota nº 4', detalle:'Stripe intentó cobrar el 27/08 y el 29/08, ambos rechazados (fondos insuficientes). Sin reintento programado.', asignado:'Elena Reyes', status:'En progreso'}
-    ],
-    actividades:[
-      {fecha:'29/08/2026 11:05', tipo:'Stripe', detalle:'Segundo intento de cobro fallido', resultado:'Fallido'},
-      {fecha:'27/08/2026 08:00', tipo:'Stripe', detalle:'Primer intento de cobro fallido', resultado:'Fallido'},
-    ],
-    pagos:[
-      {fecha:'27/08/2026', nCuota:4, tipo:'Mensual', estado:'Fallido', importe:462.21, detalleError:'Fondos insuficientes — 2º intento fallido'},
-      {fecha:'27/07/2026', nCuota:3, tipo:'Mensual', estado:'Pagado', importe:462.21},
-    ],
-    notas:[],
-  },
-  {
-    id:'nova-dental-us', nombre:'Nova Dental (US)', email:'billing@novadental.example',
-    entidad:'LLC Extranjero', moneda:'USD', formaPago:'Tarjeta', diaCobro:28,
-    cuotaBase:900, cc:false, ccCuota:0,
-    referidosActivos:0, descuentoReferidos:0,
-    totalACobrar:900,
-    campanas:[
-      {n:'Campaña principal', estado:'Activa', desde:'20/01/2026', inversion:900, presupuesto:900},
-      {n:'Campaña secundaria', estado:'Activa', desde:'15/06/2026', inversion:347, presupuesto:347},
-    ],
-    fechaAlta:'20/01/2026', fechaFinPermanencia:null,
-    contacto:{ contacto1:'Dr. Mark Levin', whatsapp:'', ciudad:'Miami, FL', pais:'Estados Unidos',
-      cif:'', nombreFiscal:'Nova Dental LLC', direccion:'—', comercial:'Camila Duarte', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaEnvio:'18/01/2026', fechaFirma:'20/01/2026', revisado:true, url:'#' },
-    alertas:[],
-    actividades:[
-      {fecha:'28/08/2026 09:00', tipo:'Email', detalle:'Recibo de cobro — ciclo natural agosto', resultado:'Enviado'},
-    ],
-    pagos:[
-      {fecha:'28/08/2026', nCuota:7, tipo:'Mensual', estado:'Pagado', importe:1247},
-      {fecha:'28/07/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:1247},
-    ],
-    notas:[],
-  },
-  {
-    id:'centro-fisio-norte', nombre:'Centro Fisio Norte', email:'recepcion@fisionorte.example',
-    entidad:'SL', moneda:'EUR', formaPago:'Tarjeta', diaCobro:28,
-    cuotaBase:647, cc:true, ccCuota:150,
-    referidosActivos:0, descuentoReferidos:0,
-    totalACobrar:1144, // 647 + 347 secundaria + 150 CC
-    campanas:[
-      {n:'Campaña principal', estado:'Activa', desde:'15/02/2026', inversion:650, presupuesto:650},
-      {n:'Campaña secundaria', estado:'Activa', desde:'10/07/2026', inversion:340, presupuesto:347},
-    ],
-    fechaAlta:'15/02/2026', fechaFinPermanencia:null,
-    contacto:{ contacto1:'Iñaki Zubiaurre Etxarri', whatsapp:'+34 688 214 590', ciudad:'Bilbao', pais:'España',
-      cif:'B-95087412', nombreFiscal:'Centro Fisio Norte SL', direccion:'Gran Vía 41, 48009, Bilbao',
-      comercial:'Marcos Ibáñez', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaEnvio:'12/02/2026', fechaFirma:'15/02/2026', revisado:true, url:'#' },
-    alertas:[
-      {tipo:'warn', titulo:'Enlace de pago caduca en 2 días', detalle:'El enlace enviado para regularizar septiembre caduca el 01/10/2026 y el cliente no lo ha usado todavía.', asignado:'Camila Duarte', status:'En progreso'}
-    ],
-    actividades:[
-      {fecha:'26/09/2026 16:20', tipo:'Email', detalle:'Enlace de regularización enviado', resultado:'Enviado'},
-    ],
-    pagos:[
-      {fecha:'28/08/2026', nCuota:7, tipo:'Mensual', estado:'Pagado', importe:1144},
-      {fecha:'28/07/2026', nCuota:6, tipo:'Mensual', estado:'Pagado', importe:1144},
-    ],
-    notas:[],
-  },
-  {
-    id:'pilates-vega', nombre:'Estudio Pilates Vega', email:'info@pilatesvega.example',
-    entidad:'Autónomo Eduardo', moneda:'EUR', formaPago:'SEPA', diaCobro:27,
-    cuotaBase:347, cc:false, ccCuota:0,
-    referidosActivos:0, descuentoReferidos:0,
-    totalACobrar:347,
-    campanas:[{n:'Campaña principal', estado:'Activa', desde:'08/08/2026', inversion:150, presupuesto:150}],
-    fechaAlta:'08/08/2026', fechaFinPermanencia:'08/11/2026',
-    contacto:{ contacto1:'Vega Almendros Ruiz', whatsapp:'+34 633 507 812', ciudad:'Sevilla', pais:'España',
-      cif:'44219873F', nombreFiscal:'Vega Almendros Ruiz', direccion:'Calle Feria 102, 41003, Sevilla',
-      comercial:'Elena Reyes', referidor:'— Sin referidor —' },
-    contrato:{ firmado:true, fechaEnvio:'05/08/2026', fechaFirma:'08/08/2026', revisado:false, url:'#' },
-    alertas:[],
-    actividades:[
-      {fecha:'27/08/2026 09:00', tipo:'Email', detalle:'Recibo de cobro — ciclo natural agosto', resultado:'Enviado'},
-    ],
-    pagos:[ {fecha:'27/08/2026', nCuota:1, tipo:'Primer pago', estado:'Pagado', importe:347} ],
-    notas:[],
-  },
-];
+const API_BASE = 'https://n8n.nemetea.com/webhook';
 
-let selectedId = CLIENTES[0].id;
+let CLIENTES = [];
+let listaCargada = false;
+let listaError = null;
+
+async function fetchListaClientes(){
+  listaError = null;
+  renderList();
+  try {
+    const res = await fetch(`${API_BASE}/panel-clientes-lista`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    CLIENTES = (data.clientes || []).map(c => ({
+      ...c,
+      contacto: {}, campanas: [], actividades: [],
+      alertas: [], pagos: [], notas: [], contrato: null,
+      fechaAlta: null, detalleCargado: false,
+    }));
+    listaCargada = true;
+    if (!selectedId && CLIENTES.length) selectedId = CLIENTES[0].id;
+  } catch (err) {
+    listaError = 'No se pudo cargar la lista de clientes desde n8n/Airtable. ' + err.message;
+  }
+  renderList();
+  renderDetail();
+}
+
+async function fetchDetalleCliente(id){
+  detalleCargando = true;
+  renderDetail();
+  try {
+    const res = await fetch(`${API_BASE}/panel-clientes-detalle?record_id=${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const detalle = await res.json();
+    const c = CLIENTES.find(x => x.id === id);
+    if (c) Object.assign(c, detalle, { detalleCargado: true });
+  } catch (err) {
+    console.error('Error cargando detalle de cliente', err);
+  }
+  detalleCargando = false;
+  renderDetail();
+}
+
+let selectedId = null;
 let editandoDatos = false;
 let activeFilter = 'todos';
 let searchTerm = '';
+let detalleCargando = false;
 
 function tieneImpago(c){ return c.pagos.some(p => p.estado === 'Fallido'); }
 function numAlertas(c){ return (c.alertas ? c.alertas.length : 0) + (tieneImpago(c) ? 1 : 0); }
@@ -504,12 +429,28 @@ function saludFicha(c){
 function renderList(){
   const cont = $('clientList');
   cont.innerHTML = '';
-  $('count-label').textContent = `(${CLIENTES.length})`;
+  $('count-label').textContent = listaCargada ? `(${CLIENTES.length})` : '';
+
+  if (listaError){
+    cont.innerHTML = `<div style="padding:20px; font-size:0.82rem; color:var(--critical);">${listaError}<br><button type="button" class="ghost sm" style="margin-top:10px;" onclick="fetchListaClientes()">↻ Reintentar</button></div>`;
+    return;
+  }
+  if (!listaCargada){
+    cont.innerHTML = `<div style="padding:20px; font-size:0.82rem; color:var(--ink-dim);">Cargando clientes desde Airtable…</div>`;
+    return;
+  }
+
   const term = searchTerm.toLowerCase();
-  CLIENTES
+  const visibles = CLIENTES
     .filter(c => activeFilter==='todos' || (activeFilter==='alerta' && numAlertas(c)>0) || (activeFilter==='ok' && numAlertas(c)===0))
-    .filter(c => !term || c.nombre.toLowerCase().includes(term) || c.email.toLowerCase().includes(term))
-    .forEach(c => {
+    .filter(c => !term || c.nombre.toLowerCase().includes(term) || c.email.toLowerCase().includes(term));
+
+  if (!visibles.length){
+    cont.innerHTML = `<div style="padding:20px; font-size:0.82rem; color:var(--ink-dim);">Sin clientes que coincidan.</div>`;
+    return;
+  }
+
+  visibles.forEach(c => {
       const row = document.createElement('div');
       row.className = 'client-row' + (c.id===selectedId ? ' selected' : '');
       const est = estadoCliente(c);
@@ -598,6 +539,12 @@ function renderDetail(){
   const c = CLIENTES.find(x => x.id===selectedId);
   const cont = $('detail');
   if (!c){ cont.innerHTML = '<div class="panel" style="padding:40px; text-align:center; color:var(--ink-dim);">Selecciona un cliente</div>'; return; }
+
+  if (!c.detalleCargado){
+    if (!detalleCargando) fetchDetalleCliente(c.id);
+    cont.innerHTML = '<div class="panel" style="padding:40px; text-align:center; color:var(--ink-dim);">Cargando ficha del cliente…</div>';
+    return;
+  }
 
   const st = estadoCliente(c);
   const impago = c.pagos.find(p => p.estado === 'Fallido');
@@ -761,7 +708,7 @@ function renderDetail(){
 
       <div class="tab-panel" data-panel="modificar">
         <div class="mod-body">
-          <div class="mod-note">Simula el efecto en <b>Total a Cobrar</b> antes de guardar — el cálculo real lo hace el motor de Airtable (Regla cuota × Multiplicador cobro), esto es solo una vista previa. Nada se guarda todavía: pendiente de conectar al webhook de n8n que escriba en Clientes.</div>
+          <div class="mod-note">Simula el efecto en <b>Total a Cobrar</b> antes de guardar — el cálculo real lo hace el motor de Airtable (Regla cuota × Multiplicador cobro), esto es solo una vista previa. Contact Center, campañas adicionales y referidos activos todavía no tienen webhook de guardado (hay que cambiarlos directamente en Airtable). Los <b>ajustes manuales</b> sí se guardan desde aquí: se crean como cargos (invoice items) en Stripe.</div>
 
           <div class="mod-row">
             <div><div class="t">Contact Center</div><div class="d">${c.entidad.startsWith('LLC') && c.moneda==='USD' ? '0 € — LLC Extranjero no factura CC por huso horario' : (c.moneda==='USD' ? '175 USD/mes' : '150 €/mes')}, se cobra por campaña marcada, no por cliente</div></div>
@@ -790,8 +737,8 @@ function renderDetail(){
           <div class="mod-calc" id="mod-preview"></div>
 
           <div class="mod-footer">
-            <button type="button" class="ghost">Cancelar</button>
-            <button type="button" class="primary">Guardar cambios en Airtable</button>
+            <button type="button" class="ghost" id="mod-cancelar-btn">Cancelar</button>
+            <button type="button" class="primary" id="mod-guardar-ajustes-btn">Aplicar ajustes manuales en Stripe</button>
           </div>
         </div>
       </div>
@@ -848,9 +795,14 @@ function renderDetail(){
     });
   });
 
-  // Edición de Contacto / Datos fiscales — en este diseño se guarda solo en
-  // memoria (CLIENTES). Pendiente de conectar al webhook real que escriba
-  // en la tabla Clientes de Airtable.
+  // Edición de Contacto / Datos fiscales — guarda en Airtable a través del
+  // webhook "panel-clientes-guardar-datos" (PATCH real en la tabla Clientes).
+  const AIRTABLE_FIELD_MAP = {
+    contacto1:'Nombre Contacto', whatsapp:'WhatsApp', ciudad:'Ciudad', pais:'País',
+    cif:'CIF/NIF', nombreFiscal:'Nombre Fiscal', direccion:'Dirección Completa',
+    referidor:'Referidor Externo', email:'Email', entidad:'Entidad Contratante',
+  };
+
   const editBtn = cont.querySelector('#datos-edit-btn');
   if (editBtn) editBtn.addEventListener('click', () => { editandoDatos = true; renderDetail(); });
 
@@ -858,17 +810,41 @@ function renderDetail(){
   if (cancelBtn) cancelBtn.addEventListener('click', () => { editandoDatos = false; renderDetail(); });
 
   const guardarDatosBtn = cont.querySelector('#datos-guardar-btn');
-  if (guardarDatosBtn) guardarDatosBtn.addEventListener('click', () => {
+  if (guardarDatosBtn) guardarDatosBtn.addEventListener('click', async () => {
+    const fields = {};
+    const local = {};
     cont.querySelectorAll('.datos-input').forEach(inputEl => {
       const field = inputEl.dataset.field;
       const value = inputEl.value.trim();
-      if (field === 'email'){ c.email = value; }
-      else if (field === 'entidad'){ c.entidad = value; }
-      else { c.contacto[field] = value; }
+      const airtableField = AIRTABLE_FIELD_MAP[field];
+      if (airtableField) fields[airtableField] = value;
+      if (field === 'email'){ local.email = value; }
+      else if (field === 'entidad'){ local.entidad = value; }
+      else { local[field] = value; }
     });
-    editandoDatos = false;
-    renderList();
-    renderDetail();
+
+    guardarDatosBtn.disabled = true;
+    guardarDatosBtn.textContent = 'Guardando…';
+    try {
+      const res = await fetch(`${API_BASE}/panel-clientes-guardar-datos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: c.id, fields }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      Object.entries(local).forEach(([field, value]) => {
+        if (field === 'email'){ c.email = value; }
+        else if (field === 'entidad'){ c.entidad = value; }
+        else { c.contacto[field] = value; }
+      });
+      editandoDatos = false;
+      renderList();
+      renderDetail();
+    } catch (err) {
+      guardarDatosBtn.disabled = false;
+      guardarDatosBtn.textContent = 'Guardar cambios';
+      alert('No se pudo guardar en Airtable: ' + err.message);
+    }
   });
 
   // Ajustes manuales: lista libre de motivo + cantidad (+/-), sin categoría predeterminada.
@@ -901,6 +877,36 @@ function renderDetail(){
     updatePreview();
   });
   renderAjustes();
+
+  const cancelarAjustesBtn = $('mod-cancelar-btn');
+  cancelarAjustesBtn.addEventListener('click', () => { renderDetail(); });
+
+  const guardarAjustesBtn = $('mod-guardar-ajustes-btn');
+  guardarAjustesBtn.addEventListener('click', async () => {
+    const validos = ajustesManuales.filter(a => a.motivo.trim() && a.cantidad);
+    if (!validos.length){ alert('Añade al menos un ajuste con motivo y cantidad antes de guardar.'); return; }
+
+    guardarAjustesBtn.disabled = true;
+    guardarAjustesBtn.textContent = 'Aplicando en Stripe…';
+    try {
+      const res = await fetch(`${API_BASE}/panel-clientes-aplicar-ajuste`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: c.id, ajustes: validos }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+      ajustesManuales = [];
+      alert(`Ajustes aplicados en Stripe (${data.creados || validos.length} cargo(s)).`);
+      renderAjustes();
+      updatePreview();
+    } catch (err) {
+      alert('No se pudo aplicar el ajuste en Stripe: ' + err.message);
+    } finally {
+      guardarAjustesBtn.disabled = false;
+      guardarAjustesBtn.textContent = 'Aplicar ajustes manuales en Stripe';
+    }
+  });
 
   function updatePreview(){
     const cc = $('mod-cc').checked;
