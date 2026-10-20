@@ -635,8 +635,8 @@ function renderDetail(){
       </div>
       <div class="tile">
         <span class="label">${c.fechaFinPermanencia ? 'Fin de permanencia' : 'Forma de cobro'}</span>
-        <span class="value num" style="font-size:1.1rem;">${c.fechaFinPermanencia || c.formaPago}</span>
-        <span class="foot">${c.fechaFinPermanencia ? 'permanencia de 3 meses, sin condiciones' : 'día ' + c.diaCobro + ' de cada mes'}</span>
+        <span class="value num" style="font-size:1.1rem;">${c.fechaFinPermanencia || c.formaPago || '—'}</span>
+        <span class="foot">${c.fechaFinPermanencia ? 'permanencia de 3 meses, sin condiciones' : 'según el ciclo de cobro mensual'}</span>
       </div>
     </div>
 
@@ -655,7 +655,7 @@ function renderDetail(){
         <div class="info-block info-divider">
           <div class="info-block-title">Forma de cobro</div>
           <div class="info-grid">
-            <div class="info-item"><span class="k">Forma de cobro</span><span class="v">${c.formaPago} · día ${c.diaCobro}</span></div>
+            <div class="info-item"><span class="k">Forma de cobro</span><span class="v">${c.formaPago || '— sin especificar —'}</span></div>
           </div>
         </div>
         ${c.contrato && c.contrato.firmado ? `
