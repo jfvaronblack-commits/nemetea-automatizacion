@@ -329,6 +329,25 @@ const fmtMoney = (n, moneda) => (n==null ? '—' : n.toLocaleString('es-ES', {st
 const EQUIPO = ['Sin asignar','Camila Duarte','Elena Reyes','Marcos Ibáñez','Micaela','Juanfra'];
 
 // ---------------------------------------------------------------
+// Estado de la app y conexión real a los webhooks del flujo n8n
+// "Interfaz - Panel Clientes" (lee/escribe Airtable, base
+// appEZnB8ZDVAcBDAV; lee pagos e inserta ajustes en Stripe).
+// Declarado antes del bloque de login porque showApp() puede
+// disparar fetchListaClientes() de forma síncrona al cargar la
+// página (si ya había sesión guardada).
+// ---------------------------------------------------------------
+const API_BASE = 'https://n8n.nemetea.com/webhook';
+
+let CLIENTES = [];
+let listaCargada = false;
+let listaError = null;
+let selectedId = null;
+let editandoDatos = false;
+let activeFilter = 'todos';
+let searchTerm = '';
+let detalleCargando = false;
+
+// ---------------------------------------------------------------
 // Login — mismo patrón cosmético que ruta-de-arranque.html.
 // Pendiente de sustituir por validación real + token de webhooks
 // (lo dejamos para el final, según lo acordado).
@@ -357,19 +376,6 @@ function showLogin(){
     showLogin();
   });
 })();
-
-// ---------------------------------------------------------------
-// Conexión real: webhooks del flujo n8n "Interfaz - Panel Clientes"
-// (lee/escribe Airtable, base appEZnB8ZDVAcBDAV; ajustes manuales
-// se crean como invoice items en Stripe). Los campos de pagos,
-// alertas, contrato y notas todavía no tienen webhook propio: se
-// quedan vacíos hasta que se conecte ese tramo.
-// ---------------------------------------------------------------
-const API_BASE = 'https://n8n.nemetea.com/webhook';
-
-let CLIENTES = [];
-let listaCargada = false;
-let listaError = null;
 
 async function fetchListaClientes(){
   listaError = null;
@@ -424,12 +430,6 @@ async function fetchHistoricoPagos(id){
   }
   if (selectedId === id) renderDetail();
 }
-
-let selectedId = null;
-let editandoDatos = false;
-let activeFilter = 'todos';
-let searchTerm = '';
-let detalleCargando = false;
 
 function tieneImpago(c){ return c.pagos.some(p => p.estado === 'Fallido'); }
 function numAlertas(c){ return (c.alertas ? c.alertas.length : 0) + (tieneImpago(c) ? 1 : 0); }
