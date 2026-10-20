@@ -712,16 +712,15 @@ function renderDetail(){
           <span class="n">${c.campanas.length}</span>
         </div>
         <div class="campaign-grid">
-          ${c.campanas.map((cp, i) => `
+          ${c.campanas.map((cp) => `
             <div class="campaign-card">
-              <div class="cname">${cp.n}${i>0 ? ' <span style="font-weight:400; color:var(--ink-dim);">(+347 €/mes)</span>' : ''}</div>
+              <div class="cname">${cp.nombre || '— sin nombre —'}</div>
               <div class="cmeta">
-                <span><span class="pill ${cp.estado==='Activa'?'good':'mute'}">${cp.estado}</span></span>
-                <span>Activa desde: ${cp.desde}</span>
-              </div>
-              <div class="cspend">Inversión ejecutada: ${fmtMoney(cp.inversion, c.moneda)} de ${fmtMoney(cp.presupuesto, c.moneda)} presupuestados</div>
-              <div class="cactions">
-                ${cp.estado==='Activa' ? '<button type="button" class="ghost sm">⏸ Pausar</button>' : '<button type="button" class="primary sm">▶ Reactivar</button>'}
+                <span><span class="pill ${cp.estado==='Activa'?'good':'mute'}">${cp.estado || 'Sin estado'}</span>${cp.campanaId ? ` <span style="color:var(--ink-dim);">· Campaña ID ${cp.campanaId}</span>` : ''}</span>
+                <span>Activa desde: ${cp.desde || '—'}</span>
+                <span>Presupuesto mensual: ${fmtMoney(cp.presupuesto, c.moneda)}</span>
+                <span>Assets asociados: ${cp.assetsCount}${cp.landingUrl ? ` · <a href="${cp.landingUrl}" target="_blank" rel="noopener">ver landing ↗</a>` : ''}</span>
+                <span>Ofertas asociadas: ${cp.ofertasCount}</span>
               </div>
             </div>
           `).join('')}
