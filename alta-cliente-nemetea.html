@@ -1,0 +1,1616 @@
+<title>Alta de Cliente Nemetea</title>
+<script>
+(function(){
+  try {
+    if (localStorage.getItem('nemetea_auth') === 'ok') {
+      document.documentElement.classList.add('mk-authed');
+    }
+  } catch(e){}
+})();
+</script>
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+
+/* ============ tokens ============ */
+:root{
+  --ground:#F6F1E6;
+  --surface:#FFFFFF;
+  --surface-2:#FBF6EC;
+  --ink:#21262A;
+  --ink-soft:#5E6A64;
+  --ink-faint:#8D9791;
+  --line:#E4D8BF;
+  --line-soft:#EEE6D3;
+
+  --accent:#B5762C;       /* input humano — closer */
+  --accent-ink:#7C4E1D;
+  --accent-soft:#F1E0BE;
+
+  --auto:#2E6E6B;         /* calculado por el sistema */
+  --auto-ink:#1F4B49;
+  --auto-soft:#DCEBE9;
+
+  --good:#3F7D5C;
+  --good-soft:#E1EEE5;
+  --warn:#B5762C;
+  --warn-soft:#F1E0BE;
+  --critical:#AE4A30;
+  --critical-soft:#F5E1D8;
+
+  --shadow: 0 1px 2px rgba(33,38,42,.06), 0 8px 24px -10px rgba(33,38,42,.16);
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#171E1D;
+    --surface:#202A28;
+    --surface-2:#25302D;
+    --ink:#ECE7DA;
+    --ink-soft:#A2AEA7;
+    --ink-faint:#6E7A73;
+    --line:#39433C;
+    --line-soft:#2C3631;
+
+    --accent:#E0A45C;
+    --accent-ink:#F4CC93;
+    --accent-soft:#3B2E1B;
+
+    --auto:#6FC2BC;
+    --auto-ink:#B6E5E0;
+    --auto-soft:#1B3634;
+
+    --good:#79C39B;
+    --good-soft:#1E322A;
+    --warn:#E0A45C;
+    --warn-soft:#3B2E1B;
+    --critical:#E58A6D;
+    --critical-soft:#3A241E;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px -12px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#171E1D;
+  --surface:#202A28;
+  --surface-2:#25302D;
+  --ink:#ECE7DA;
+  --ink-soft:#A2AEA7;
+  --ink-faint:#6E7A73;
+  --line:#39433C;
+  --line-soft:#2C3631;
+
+  --accent:#E0A45C;
+  --accent-ink:#F4CC93;
+  --accent-soft:#3B2E1B;
+
+  --auto:#6FC2BC;
+  --auto-ink:#B6E5E0;
+  --auto-soft:#1B3634;
+
+  --good:#79C39B;
+  --good-soft:#1E322A;
+  --warn:#E0A45C;
+  --warn-soft:#3B2E1B;
+  --critical:#E58A6D;
+  --critical-soft:#3A241E;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px -12px rgba(0,0,0,.55);
+}
+
+/* ============ base ============ */
+*{ box-sizing:border-box; }
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{ font-family:'Fraunces', Georgia, serif; text-wrap:balance; margin:0; }
+::selection{ background:var(--accent-soft); }
+.mono{ font-family:'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric:tabular-nums; }
+a{ color:inherit; }
+
+/* ============ shell ============ */
+.shell{ max-width:1240px; margin:0 auto; padding:22px 24px 64px; }
+
+.topbar{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:20px;
+  padding-bottom:18px; margin-bottom:8px; border-bottom:1px solid var(--line);
+  flex-wrap:wrap;
+}
+.brand{ display:flex; align-items:center; gap:11px; }
+.brand .mark{
+  font-family:'Fraunces', serif; font-weight:700; font-size:14px; letter-spacing:.02em;
+  color:var(--accent-ink); background:var(--accent-soft); padding:5px 10px; border-radius:6px;
+}
+.brand-text h1{ font-size:20px; font-weight:600; letter-spacing:-.01em; }
+.brand-text .crumb{ font-size:12px; color:var(--ink-faint); margin-top:2px; }
+.status-chip{
+  display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600;
+  letter-spacing:.03em; text-transform:uppercase; color:var(--auto-ink);
+  background:var(--auto-soft); border:1px solid var(--auto); border-radius:20px; padding:5px 11px;
+  white-space:nowrap;
+}
+.status-chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--auto); }
+
+.banner{
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  font-size:12.5px; color:var(--ink-soft); background:var(--surface-2);
+  border:1px dashed var(--line); border-radius:8px; padding:9px 13px; margin:16px 0 26px;
+  line-height:1.55;
+}
+.banner strong{ color:var(--ink); }
+
+.layout{ display:grid; grid-template-columns: minmax(0,1fr) 372px; gap:26px; align-items:start; }
+@media (max-width: 980px){ .layout{ grid-template-columns:1fr; } }
+
+/* ============ form column ============ */
+.steps{ display:flex; flex-direction:column; gap:18px; }
+.step{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+.step-head{
+  display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line-soft);
+}
+.step-num{
+  font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:600; color:var(--accent-ink);
+  background:var(--accent-soft); border-radius:50%; width:24px; height:24px;
+  display:flex; align-items:center; justify-content:center; flex:none;
+}
+.step-head h2{ font-size:15.5px; font-weight:600; }
+.step-head .sub{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+.step-body{ padding:18px 20px 20px; display:flex; flex-direction:column; gap:14px; }
+
+.grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+@media (max-width:640px){ .grid2, .grid3{ grid-template-columns:1fr; } }
+
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); letter-spacing:.01em; }
+.field label .req{ color:var(--critical); margin-left:2px; }
+.field .hint{ font-size:11px; color:var(--ink-faint); line-height:1.4; }
+
+input[type=text], input[type=date], input[type=email], input[type=tel], select{
+  font-family:'IBM Plex Sans', sans-serif; font-size:13.5px; color:var(--ink);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:7px;
+  padding:9px 11px; width:100%; outline:none; transition:border-color .12s ease, box-shadow .12s ease;
+}
+input[type=date]{ font-family:'IBM Plex Mono', monospace; }
+input:focus, select:focus{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+select:disabled{ opacity:.7; cursor:not-allowed; background-image:none; }
+select{
+  appearance:none;
+  background-image:linear-gradient(45deg, transparent 50%, var(--ink-soft) 50%), linear-gradient(135deg, var(--ink-soft) 50%, transparent 50%);
+  background-position: calc(100% - 16px) center, calc(100% - 11px) center;
+  background-size:5px 5px, 5px 5px; background-repeat:no-repeat; padding-right:30px;
+}
+
+.toggle-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:2px 0; }
+.toggle-text .t{ font-size:13px; font-weight:500; }
+.toggle-text .d{ font-size:11.5px; color:var(--ink-faint); margin-top:1px; }
+.switch{ position:relative; width:38px; height:22px; flex:none; }
+.switch input{ opacity:0; width:0; height:0; position:absolute; }
+.switch .track{ position:absolute; inset:0; background:var(--line); border-radius:20px; cursor:pointer; transition:background .15s ease; }
+.switch .track::after{ content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:var(--surface); border-radius:50%; transition:transform .15s ease; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+.switch input:checked + .track{ background:var(--accent); }
+.switch input:checked + .track::after{ transform:translateX(16px); }
+
+.newtag{
+  display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--good); background:var(--good-soft); border-radius:5px; padding:2px 6px;
+  margin-left:7px; vertical-align:2px;
+}
+
+.pillrow{ display:flex; flex-wrap:wrap; gap:8px; }
+.pill-opt{
+  font-size:12.5px; font-weight:500; padding:7px 13px; border-radius:20px; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--ink-soft); cursor:pointer; transition:.12s ease;
+}
+.pill-opt.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); font-weight:600; }
+
+.subnote{ font-size:11.5px; color:var(--ink-faint); background:var(--surface-2); border:1px dashed var(--line); border-radius:7px; padding:9px 11px; line-height:1.55; }
+
+.section-div{
+  display:flex; align-items:baseline; gap:9px; margin-top:4px; padding-top:14px; border-top:1px solid var(--line-soft);
+  font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint);
+}
+.section-div-sub{ font-size:11px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-faint); }
+.toggle-row-tight{ padding:9px 11px; background:var(--surface-2); border:1px solid var(--line); border-radius:7px; }
+
+.anchor-field{
+  border:1px solid var(--accent); background:var(--accent-soft); border-radius:9px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:10px;
+}
+.anchor-field .field label{ color:var(--accent-ink); }
+.anchor-field input[type=date]{ background:var(--surface); border-color:var(--accent); }
+.anchor-preview{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:11.5px; color:var(--accent-ink);
+  padding-top:8px; border-top:1px dashed var(--accent);
+}
+.anchor-preview .ap-date{ font-family:'IBM Plex Mono', monospace; font-weight:600; background:var(--surface); border:1px solid var(--accent); border-radius:5px; padding:2px 7px; }
+.anchor-preview .ap-arrow{ color:var(--ink-faint); }
+.anchor-preview .ap-tag{ font-weight:600; margin-right:2px; }
+
+.anchor-prorrateo{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--accent); border-radius:7px; padding:9px 12px;
+}
+.anchor-prorrateo .ap-label{ font-size:11.5px; color:var(--ink-soft); }
+.anchor-prorrateo .ap-label strong{ color:var(--ink); }
+.anchor-prorrateo .ap-amount{ text-align:right; }
+.anchor-prorrateo .ap-amount .ap-base{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:14px; color:var(--accent-ink); }
+.anchor-prorrateo .ap-amount .ap-total{ font-size:10.5px; color:var(--ink-faint); }
+
+.footer-actions{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  padding:16px 4px 0;
+}
+.btn{
+  font-family:'IBM Plex Sans', sans-serif; font-size:13.5px; font-weight:600; border-radius:8px;
+  padding:11px 20px; border:1px solid transparent; cursor:pointer;
+}
+.btn-primary{ background:var(--accent); color:#fff; }
+.btn-ghost{ background:transparent; color:var(--ink-soft); border-color:var(--line); }
+.foot-note{ font-size:11.5px; color:var(--ink-faint); }
+.btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+/* ============ right rail — auto-calculado ============ */
+.rail{ position:sticky; top:20px; display:flex; flex-direction:column; gap:16px; }
+.rail-card{
+  background:var(--surface); border:1px solid var(--auto); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow:hidden;
+}
+.rail-head{
+  padding:15px 18px 13px; border-bottom:1px solid var(--line-soft); background:var(--auto-soft);
+  display:flex; flex-direction:column; gap:3px;
+}
+.rail-head .kicker{
+  font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--auto-ink);
+  display:flex; align-items:center; gap:6px;
+}
+.rail-head .kicker svg{ width:12px; height:12px; }
+.rail-head h3{ font-size:15px; font-weight:600; color:var(--ink); }
+.rail-body{ padding:14px 18px 18px; display:flex; flex-direction:column; gap:12px; }
+
+.cal-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--line-soft); }
+.cal-row:last-child{ border-bottom:none; padding-bottom:0; }
+.cal-l{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.cal-l .c-title{ font-size:12.5px; font-weight:600; }
+.cal-l .c-date{ font-size:11px; color:var(--ink-faint); }
+.cal-r{ text-align:right; flex:none; }
+.cal-r .amt{ font-size:13.5px; font-weight:700; }
+.cal-r .amt.zero{ color:var(--ink-faint); font-weight:500; }
+.cal-r .tax{ font-size:10px; color:var(--ink-faint); margin-top:1px; }
+
+.milestone{ background:var(--surface-2); border-radius:7px; padding:9px 11px; margin:2px 0; }
+.milestone .m-t{ font-size:11.5px; font-weight:600; color:var(--auto-ink); }
+.milestone .m-d{ font-size:11px; color:var(--ink-faint); margin-top:1px; }
+
+.recur-band{
+  background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.recur-band .l{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.recur-band .l .t{ font-size:12px; font-weight:600; }
+.recur-band .l .s{ font-size:10.5px; color:var(--ink-faint); }
+.recur-band .r{ text-align:right; }
+.recur-band .r .amt{ font-size:16px; font-weight:700; color:var(--accent-ink); }
+.recur-band .r .per{ font-size:10px; color:var(--ink-faint); }
+
+.rail-foot{ font-size:11px; color:var(--ink-faint); line-height:1.5; padding-top:2px; }
+
+.legend-card{
+  background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px;
+  font-size:11.5px; color:var(--ink-soft); line-height:1.6;
+}
+.legend-card .lg-title{ font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:8px; }
+.legend-item{ display:flex; align-items:flex-start; gap:8px; margin-bottom:6px; }
+.legend-item:last-child{ margin-bottom:0; }
+.swatch{ width:10px; height:10px; border-radius:3px; margin-top:3px; flex:none; }
+.swatch.human{ background:var(--accent); }
+.swatch.auto{ background:var(--auto); }
+
+footer.pagefoot{
+  margin-top:30px; padding-top:16px; border-top:1px solid var(--line);
+  font-size:11.5px; color:var(--ink-faint); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+
+/* ============ guardar datos — nuevo ============ */
+.save-row{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  margin-top:6px; padding-top:16px; border-top:1px solid var(--line-soft);
+}
+.save-status{ font-size:11.5px; line-height:1.5; max-width:56ch; }
+.save-status .rec{ font-family:'IBM Plex Mono', monospace; font-weight:600; }
+.save-status.ok{ color:var(--good); }
+.save-status.err{ color:var(--critical); }
+.save-status.idle{ color:var(--ink-faint); }
+.btn-save{ background:var(--auto); color:#fff; }
+
+/* ============ acceso — pantalla de login ============ */
+.shell{ display:none; }
+html.mk-authed .shell{ display:block; }
+#mk-login-gate{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:24px; background:var(--ground);
+}
+html.mk-authed #mk-login-gate{ display:none; }
+.login-card{
+  width:100%; max-width:360px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:28px 26px 24px;
+}
+.login-brand{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.login-brand .mark{
+  width:32px; height:32px; border-radius:8px; background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-weight:700; font-size:14px; flex:none;
+}
+.login-brand h1{ font-family:'Fraunces', serif; font-size:17px; font-weight:600; margin:0; letter-spacing:-.01em; }
+.login-brand .sub{ font-size:11px; color:var(--ink-faint); }
+.login-card .field{ display:flex; flex-direction:column; gap:4px; margin-bottom:14px; }
+.login-card label{ font-size:11px; font-weight:600; color:var(--ink-soft); }
+.login-card input{
+  font:inherit; font-size:13.5px; padding:9px 11px; border:1px solid var(--line); border-radius:8px;
+  background:var(--surface); color:var(--ink); width:100%; box-sizing:border-box;
+}
+.login-card input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+.login-btn{
+  width:100%; margin-top:4px; background:var(--accent); color:#fff; border:none; border-radius:8px;
+  padding:10px 14px; font:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
+}
+.login-btn:hover{ background:var(--accent-ink); }
+.login-error{ font-size:11.5px; color:var(--critical); min-height:15px; margin-top:10px; }
+</style>
+
+<div id="mk-login-gate">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="mark">NM</span>
+      <div><h1>Alta de cliente</h1><div class="sub">CRM Nemetea — acceso restringido</div></div>
+    </div>
+    <form id="mk-login-form" autocomplete="on">
+      <div class="field"><label for="mk-login-email">Email</label>
+        <input type="email" id="mk-login-email" autocomplete="username" required></div>
+      <div class="field"><label for="mk-login-pass">Contraseña</label>
+        <input type="password" id="mk-login-pass" autocomplete="current-password" required></div>
+      <button type="submit" class="login-btn">Entrar →</button>
+      <div class="login-error" id="mk-login-error"></div>
+    </form>
+  </div>
+</div>
+
+<div class="shell">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">NM</span>
+      <div class="brand-text">
+        <h1>Alta de cliente</h1>
+        <div class="crumb">CRM Nemetea · rediseño — reemplaza el simulador HTML + Excel</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span class="status-chip"><span class="dot"></span>Conectado a Airtable / n8n</span>
+      <button type="button" id="mk-btn-nueva-alta" class="btn btn-ghost" style="font-size:11px; padding:6px 12px;">+ Nueva alta</button>
+      <button type="button" id="mk-btn-logout" class="btn btn-ghost" style="font-size:11px; padding:6px 12px;">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="banner">
+    <strong>Solo el momento del alta.</strong> Campañas adicionales, descuentos y continuidad de Contact Center viven en la ficha de <em>Gestión de cliente activo</em>, aparte — el closer no los ve aquí.
+  </div>
+
+  <div class="layout">
+
+    <!-- ===================== FORM ===================== -->
+    <div class="steps">
+
+      <!-- 1 · Contacto, empresa y fiscal -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">1</span>
+          <div><h2>Contacto, empresa y fiscal</h2><div class="sub">Quién firma, quién atiende el día a día y a quién se factura</div></div>
+        </div>
+        <div class="step-body">
+          <div class="field"><label>Nombre comercial<span class="req">*</span></label>
+            <input type="text" value="Bruma Estética" id="mk-empresa"></div>
+          <div class="grid2">
+            <div class="field"><label>Contacto principal<span class="req">*</span></label>
+              <span class="hint">Quien firma o decide</span>
+              <input type="text" value="Nadia Ferrer Solís" id="mk-contacto1"></div>
+            <div class="field"><label>Contacto secundario</label>
+              <span class="hint">Recepción, community manager…</span>
+              <input type="text" placeholder="Opcional" id="mk-contacto2"></div>
+          </div>
+          <div class="grid3">
+            <div class="field"><label>Email<span class="req">*</span></label><input type="email" value="hola@brumaestetica.es" id="mk-email"></div>
+            <div class="field"><label>WhatsApp<span class="req">*</span></label><input type="tel" value="+34 611 220 384" id="mk-wa"></div>
+            <div class="field"><label>Teléfono</label><input type="tel" placeholder="Opcional" id="mk-tel"></div>
+          </div>
+          <div class="grid3">
+            <div class="field"><label>Ciudad</label><input type="text" value="Murcia" id="mk-ciudad"></div>
+            <div class="field"><label>Provincia<span class="newtag">nuevo</span></label><input type="text" value="Murcia" id="mk-provincia"></div>
+            <div class="field"><label>País</label><input type="text" value="España" id="mk-pais"></div>
+          </div>
+          <div class="field"><label>Idioma</label>
+            <select id="mk-idioma"><option>Español</option><option>Català</option><option>English</option></select></div>
+
+          <div class="section-div"><span>Datos fiscales</span><span class="section-div-sub">A quién se factura — no el régimen del propio cliente</span></div>
+
+          <div class="grid2">
+            <div class="field"><label>Entidad contratante<span class="req">*</span></label>
+              <select id="mk-entidad"><option>SL (España)</option><option>LLC España</option><option>LLC (EE. UU.)</option><option>Autónomo (en extinción)</option></select></div>
+            <div class="field"><label>CIF / NIF<span class="req">*</span><span class="newtag">nuevo</span></label>
+              <span class="hint">Campo añadido — el closer ya lo pedía, ahora vive en Airtable</span>
+              <input type="text" value="45 118 302-Q" id="mk-cif"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>NIF/NIE representante<span class="req">*</span><span class="newtag">nuevo</span></label>
+              <span class="hint">Documento de la persona que firma — lo pide el contrato, no la empresa</span>
+              <input type="text" placeholder="Ej. 45118302Q" id="mk-nif-rep"></div>
+            <div class="field"><label>Nombre fiscal</label>
+              <span class="hint">Puede no coincidir con el comercial ni conocerse hasta el alta en Stripe</span>
+              <input type="text" placeholder="Opcional al alta" id="mk-nfiscal"></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Dirección fiscal completa<span class="req">*</span><span class="newtag">nuevo</span></label>
+              <span class="hint">Va literal en el contrato — calle, número, CP, ciudad</span>
+              <input type="text" placeholder="Calle, número, CP, ciudad" id="mk-direccion"></div>
+            <div class="field">
+              <label>Es de Canarias</label>
+              <div class="toggle-row toggle-row-tight">
+                <div class="toggle-text"><span class="d">Aplica IGIC (7%) en vez de IVA (21%)</span></div>
+                <label class="switch"><input type="checkbox" id="mk-canarias"><span class="track"></span></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-div"><span>Identificadores del sistema</span><span class="section-div-sub">Se crean solos en cuanto se guardan los datos de arriba — nadie los rellena a mano</span></div>
+          <div class="anchor-field" id="mk-ids-card" style="border-color:var(--auto); background:var(--auto-soft); flex-direction:row; flex-wrap:wrap; gap:18px 28px; padding:12px 16px;">
+            <div class="field" style="gap:3px; min-width:140px;"><label style="color:var(--auto-ink); font-size:11px;">ID Nemetea (Airtable)</label><span class="mono" id="mk-id-nemetea" style="font-size:13px; font-weight:600;">—</span></div>
+            <div class="field" style="gap:3px; min-width:220px;"><label style="color:var(--auto-ink); font-size:11px;">ID Cliente Stripe</label><span class="mono" id="mk-id-stripe" style="font-size:13px; font-weight:600;">Pendiente — se crea solo al enviar el enlace de pago (paso 4, aún no construido)</span></div>
+          </div>
+
+          <div class="save-row">
+            <span class="save-status idle" id="mk-save-status">Sin guardar todavía — pulsa «Guardar datos» para registrar al cliente en Airtable.</span>
+            <button class="btn btn-save" id="mk-btn-guardar">Guardar datos →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 · Tipo de entrada -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">2</span>
+          <div><h2>Tipo de entrada y Contact Center</h2><div class="sub">Va antes del contrato — el precio que verá el cliente depende de esto</div></div>
+        </div>
+        <div class="step-body">
+          <div class="field"><label>Tipo de entrada</label>
+            <div class="pillrow" id="mk-tipoentrada">
+              <span class="pill-opt active" data-v="estandar">Estándar</span>
+              <span class="pill-opt" data-v="formacion">Formación</span>
+              <span class="pill-opt" data-v="mesgratis">Mes gratis</span>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-text"><span class="t">Contact Center</span><span class="d">Regalo durante toda la fase de alta — nunca suma nada aquí, se factura después en Gestión</span></div>
+            <label class="switch"><input type="checkbox" id="mk-cc" checked><span class="track"></span></label>
+          </div>
+          <div class="subnote">Estos dos campos también se guardan en Airtable al pulsar «Guardar datos» en el bloque 1 — vuelve a pulsarlo si los cambias después de guardar.</div>
+        </div>
+      </div>
+
+      <!-- 3 · Envío de contrato -->
+      <div class="step" id="mk-step-contrato">
+        <div class="step-head">
+          <span class="step-num">3</span>
+          <div><h2>Envío de contrato</h2><div class="sub">Se dispara a SignWell con los datos de 1 y 2 ya rellenos — el cliente solo firma</div></div>
+        </div>
+        <div class="step-body">
+          <div class="anchor-field" style="border-color:var(--auto); background:var(--auto-soft);">
+            <div class="field" style="gap:8px;">
+              <label style="color:var(--auto-ink);">Vista previa de lo que recibirá el cliente</label>
+              <div class="mono" id="mk-contract-preview" style="font-size:12.5px; color:var(--ink); line-height:1.7;"><!-- filled by JS --></div>
+            </div>
+            <div class="anchor-prorrateo" style="border-color:var(--auto);">
+              <span class="ap-label" id="mk-contract-status"><!-- filled by JS --></span>
+              <button class="btn btn-primary" id="mk-btn-enviar" style="background:var(--auto);">Enviar contrato a SignWell →</button>
+            </div>
+          </div>
+          <div class="subnote">Automatización de n8n: al pulsar, se busca el registro guardado en Airtable, se crea el documento en SignWell con estos campos y se envía por email al contacto principal. El formulario de aquí abajo (bloque 5) se completa después, sin bloquear la firma.</div>
+
+          <div id="mk-check-row" style="display:none; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+            <span class="foot-note" id="mk-check-status">Esperando a que el cliente firme en SignWell.</span>
+            <button class="btn btn-ghost" id="mk-btn-comprobar" style="font-size:12px; padding:8px 14px;">↻ Comprobar estado del contrato</button>
+          </div>
+
+          <div id="mk-error-block" style="display:none;">
+            <div class="anchor-prorrateo" style="border-color:var(--critical); background:var(--critical-soft);">
+              <span class="ap-label"><strong style="color:var(--critical);">⚠ Error en el envío</strong> — <span id="mk-error-detalle"></span></span>
+            </div>
+          </div>
+
+          <div id="mk-signed-block" style="display:none; flex-direction:column; gap:10px;">
+            <div class="anchor-prorrateo" style="border-color:var(--good); background:var(--good-soft);">
+              <span class="ap-label"><strong style="color:var(--good);">✓ Firmado</strong> — <span id="mk-signed-date"></span></span>
+              <div style="display:flex; gap:8px;">
+                <a class="btn btn-ghost" id="mk-btn-ver" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:inline-flex; align-items:center;">Ver contrato firmado ↗</a>
+              </div>
+            </div>
+            <div class="toggle-row toggle-row-tight">
+              <div class="toggle-text"><span class="t">Revisado por el comercial</span><span class="d">Comprueba que los datos del contrato firmado son correctos antes de pasar al cobro</span></div>
+              <label class="switch"><input type="checkbox" id="mk-verificado"><span class="track"></span></label>
+            </div>
+          </div>
+          <button class="btn btn-ghost" id="mk-btn-simular-firma" style="display:none; font-size:11px; color:var(--ink-faint); align-self:flex-start; padding:6px 12px;">↻ Simular: el cliente firma (demo local, sin llamar a n8n — para probar la pantalla sin esperar una firma real)</button>
+        </div>
+      </div>
+
+      <!-- 4 · Envío de enlace de pago -->
+      <div class="step" id="mk-step-pago">
+        <div class="step-head">
+          <span class="step-num">4</span>
+          <div style="flex:1;"><h2>Envío de enlace de pago (Stripe)<span class="newtag" id="mk-pago-badge" style="display:none; color:var(--good); background:var(--good-soft);">Pago realizado</span></h2><div class="sub">Bloqueado hasta que el contrato firmado esté revisado — cobra el Pago 1</div></div>
+        </div>
+        <div class="step-body">
+          <div class="anchor-field" style="border-color:var(--auto); background:var(--auto-soft);" id="mk-pago-card">
+            <div class="field" style="gap:8px;">
+              <label style="color:var(--auto-ink);">Enlace de pago — Stripe Checkout</label>
+              <div class="mono" id="mk-payment-preview" style="font-size:12.5px; color:var(--ink); line-height:1.7;"><!-- filled by JS --></div>
+            </div>
+            <div class="anchor-prorrateo" style="border-color:var(--auto);">
+              <span class="ap-label" id="mk-payment-status"><!-- filled by JS --></span>
+              <button class="btn btn-primary" id="mk-btn-pago" style="background:var(--auto);">Enviar enlace de pago →</button>
+            </div>
+          </div>
+          <div class="subnote">El enlace ya se envía de verdad por email al contacto principal (Stripe Checkout, cuenta correcta según entidad). En cuanto el cliente paga, Stripe avisa solo a n8n por webhook y Airtable se marca como Cobrado — no hace falta confirmar nada a mano. El botón de abajo solo refresca esta pantalla con el estado real guardado en Airtable.</div>
+
+          <div id="mk-pago-check-row" style="display:none; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+            <span class="foot-note" id="mk-pago-check-status">Esperando a que Stripe confirme el cobro.</span>
+            <button class="btn btn-ghost" id="mk-btn-comprobar-pago" style="font-size:12px; padding:8px 14px;">↻ Comprobar estado del pago</button>
+          </div>
+
+          <div class="section-div"><span>Cobro recurrente</span><span class="section-div-sub">Se acuerda con el cliente en esta misma conversación</span></div>
+          <div class="field"><label>Método de cobro recurrente<span class="req">*</span></label>
+            <span class="hint">Rige desde el Pago 2 (no solo el ciclo natural) — el closer lo confirma con el cliente aquí mismo</span>
+            <select id="mk-metodociclo"><option value="27">SEPA</option><option value="28">Tarjeta</option></select></div>
+        </div>
+      </div>
+
+      <!-- 5 · Procedencia -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">5</span>
+          <div><h2>Procedencia y comercial</h2><div class="sub">El referido lo verifica el comercial — el cliente nunca introduce código</div></div>
+        </div>
+        <div class="step-body">
+          <div class="grid2">
+            <div class="field"><label>Categoría de procedencia<span class="req">*</span></label>
+              <select id="mk-categoria"><option>Publicidad</option><option>Referido</option><option>Formación</option><option>Setter</option></select></div>
+            <div class="field"><label>Responsable comercial<span class="req">*</span></label>
+              <select id="mk-comercial"><option>Camila Duarte</option><option>Elena Reyes</option><option>Marcos Ibáñez</option></select></div>
+          </div>
+          <div class="field"><label>Referidor (si aplica)</label>
+            <span class="hint">Se selecciona de la lista de clientes existentes — su código va asociado a su ficha</span>
+            <select id="mk-referidor"><option>— Sin referidor —</option><option>Kado Estética</option><option>Centro Bienestar Katia Martín</option></select></div>
+        </div>
+      </div>
+
+      <div class="footer-actions">
+        <button class="btn btn-primary" id="mk-btn-alta">Dar de alta →</button>
+        <button class="btn btn-ghost">Guardar borrador</button>
+        <span class="foot-note" id="mk-alta-hint">5 bloques · ~2 min de closer, cero cálculo a mano · documentación se gestiona en el panel de Fase 1</span>
+      </div>
+
+      <div id="mk-alta-confirm" style="display:none;">
+        <div class="anchor-prorrateo" style="border-color:var(--good); background:var(--good-soft); margin-top:4px;">
+          <div class="ap-label" style="display:flex; flex-direction:column; gap:4px;">
+            <span><strong style="color:var(--good);">✓ Cliente dado de alta</strong></span>
+            <span style="font-size:11px; color:var(--ink-soft);">Notificación enviada a <strong class="mono">#onboarding</strong> en Slack — el equipo de creación de campañas ya tiene lo que necesita para arrancar.</span>
+          </div>
+        </div>
+        <div class="subnote mono" style="margin-top:8px; white-space:pre-line;" id="mk-slack-preview"><!-- filled by JS --></div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span class="foot-note" id="mk-export-status">Exportando a «Montaje de campañas»…</span>
+          <button class="btn btn-ghost" id="mk-btn-reintentar-export" style="display:none; font-size:12px; padding:6px 12px;">↻ Reintentar exportación</button>
+        </div>
+        <div style="margin-top:6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span class="foot-note" id="mk-export-bruto-status">Exportando a la hoja de datos en bruto…</span>
+          <button class="btn btn-ghost" id="mk-btn-reintentar-export-bruto" style="display:none; font-size:12px; padding:6px 12px;">↻ Reintentar exportación</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== RIGHT RAIL — auto ===================== -->
+    <div class="rail">
+      <div class="rail-card">
+        <div class="rail-head">
+          <span class="kicker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12a8 8 0 1 1 8 8"/><path d="M4 12l3-3M4 12l3 3"/></svg>
+            Se genera solo
+          </span>
+          <h3>Calendario de cobro</h3>
+        </div>
+        <div class="rail-body" id="mk-calendar"><!-- filled by JS --></div>
+      </div>
+
+      <div class="legend-card">
+        <div class="lg-title">Cómo leer esta pantalla</div>
+        <div class="legend-item"><span class="swatch human"></span><span><strong>Ámbar</strong> — lo rellena el closer, una vez, en el momento del cierre.</span></div>
+        <div class="legend-item"><span class="swatch auto"></span><span><strong>Verde azulado</strong> — lo calcula la tabla <span class="mono">Cobros</span> sola, o lo hace n8n contra Airtable/SignWell. Nadie hace cuentas a mano.</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="pagefoot">
+    <span>Nemetea — CRM de alta de cliente</span>
+    <span>Datos de ejemplo (Bruma Estética) · v2 · conectado a Airtable/n8n</span>
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ============ acceso — login ============
+// Lista de usuarios autorizados. La contraseña NO se guarda en claro: se guarda su hash SHA-256.
+// Para añadir otro closer: calcula el hash de su contraseña (p. ej. en la consola del navegador:
+//   await sha256Hex('laContraseña')  ) y añade otra línea aquí.
+// OJO: sigue siendo un login solo de navegador — evita que se lea la contraseña, pero no es seguridad de servidor.
+const MK_USERS = [
+  { email: 'tanistitancloser@gmail.com', passHash: '46d8090cf7abd9518485ae1adcf56edbb559524c9054090db13acb2cf537aecd', nombre: 'Dani' }
+];
+
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+$('mk-login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('mk-login-email').value.trim().toLowerCase();
+  const pass = $('mk-login-pass').value;
+  let passHash = '';
+  try { passHash = await sha256Hex(pass); } catch(err) {
+    $('mk-login-error').textContent = 'Este navegador no permite verificar la contraseña (abre el CRM por https).';
+    return;
+  }
+  const user = MK_USERS.find(u => u.email.toLowerCase() === email && u.passHash === passHash);
+  if (user) {
+    try { localStorage.setItem('nemetea_auth', 'ok'); localStorage.setItem('nemetea_auth_user', user.nombre); } catch(e){}
+    document.documentElement.classList.add('mk-authed');
+    $('mk-login-error').textContent = '';
+  } else {
+    $('mk-login-error').textContent = 'Email o contraseña incorrectos.';
+  }
+});
+
+$('mk-btn-logout').addEventListener('click', () => {
+  try { localStorage.removeItem('nemetea_auth'); localStorage.removeItem('nemetea_auth_user'); } catch(e){}
+  document.documentElement.classList.remove('mk-authed');
+  $('mk-login-email').value = '';
+  $('mk-login-pass').value = '';
+});
+
+// ============ integración n8n ============
+const N8N_GUARDAR_DATOS_URL = 'https://n8n.nemetea.com/webhook/guardar-datos-cliente';
+const N8N_ENVIAR_CONTRATO_URL = 'https://n8n.nemetea.com/webhook/enviar-contrato';
+const N8N_CONSULTAR_ESTADO_URL = 'https://n8n.nemetea.com/webhook/consultar-estado-contrato';
+const N8N_ENVIAR_ENLACE_PAGO_URL = 'https://n8n.nemetea.com/webhook/enviar-enlace-pago';
+const N8N_CONSULTAR_ESTADO_PAGO_URL = 'https://n8n.nemetea.com/webhook/consultar-estado-pago';
+// Exportación PROVISIONAL a la hoja "NEMETEA - Montaje de campañas" (Google Sheets). Cuando el
+// equipo deje de necesitar esa hoja en paralelo, este bloque (constante + función + botón de
+// reintento) se puede borrar entero sin tocar nada más del CRM.
+const N8N_EXPORTAR_MONTAJE_URL = 'https://n8n.nemetea.com/webhook/exportar-montaje-campanas';
+// Exportación PROVISIONAL en bruto — todos los campos del alta, tal cual, a la hoja separada
+// "NEMETEA - Datos en Bruto de Altas (CRM)" que pidió Juan. Igual que el bloque de arriba,
+// este trozo (constante + función + llamada en mk-btn-alta) se puede borrar entero si algún
+// día deja de hacer falta, sin tocar nada más del CRM.
+const N8N_EXPORTAR_BRUTO_URL = 'https://n8n.nemetea.com/webhook/exportar-datos-bruto';
+const FETCH_TIMEOUT_MS = 15000;
+
+// record_id de Airtable — null hasta que "Guardar datos" tenga éxito una vez.
+let airtableRecordId = null;
+
+// true en cuanto "Enviar contrato a SignWell" tiene éxito una vez — se pone a false
+// otra vez si se guardan cambios en el bloque 1 después de haber enviado, para forzar
+// un reenvío con los datos corregidos (ver guardarDatos()).
+let contratoEnviado = false;
+
+// URL del contrato firmado, la rellena comprobarEstadoContrato() en cuanto SignWell lo confirma.
+// Solo se usa para la exportación en bruto (ver exportarDatosBruto()).
+let contratoFirmadoUrl = null;
+
+async function fetchWithTimeout(url, options, timeoutMs){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ============ escape de HTML ============
+// Todo texto que venga de un campo o de n8n pasa por aquí antes de ir a innerHTML.
+function esc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Solo se aceptan enlaces https (evita href="javascript:...").
+function safeUrl(u){
+  return (typeof u === 'string' && /^https:\/\//i.test(u)) ? u : null;
+}
+
+// ============ persistencia del alta en curso ============
+// Guarda en el navegador el record_id de Airtable, los campos del formulario y el estado de
+// contrato/pago. Si se recarga la página o se cierra la pestaña, el alta se retoma donde estaba
+// y «Guardar datos» ACTUALIZA el registro existente en vez de crear un cliente duplicado.
+// «+ Nueva alta» borra este estado para empezar con otro cliente.
+const ALTA_STORAGE_KEY = 'nemetea_alta_en_curso_v1';
+const PERSIST_FIELD_IDS = ['mk-empresa','mk-contacto1','mk-contacto2','mk-email','mk-wa','mk-tel','mk-ciudad','mk-provincia','mk-pais','mk-idioma','mk-entidad','mk-cif','mk-nif-rep','mk-nfiscal','mk-direccion','mk-canarias','mk-cc','mk-metodociclo','mk-categoria','mk-comercial','mk-referidor'];
+let restaurandoAlta = false;
+
+function guardarEstadoAlta(){
+  if(restaurandoAlta) return;
+  const campos = {};
+  PERSIST_FIELD_IDS.forEach(id => {
+    const el = $(id); if(!el) return;
+    campos[id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  const activo = document.querySelector('#mk-tipoentrada .pill-opt.active');
+  const estado = {
+    recordId: airtableRecordId,
+    campos,
+    tipoEntrada: activo ? activo.dataset.v : null,
+    contratoEnviado,
+    contractVerified: (typeof contractVerified !== 'undefined') ? contractVerified : false,
+    paymentSent: (typeof paymentSent !== 'undefined') ? paymentSent : false,
+    paymentConfirmed: (typeof paymentConfirmed !== 'undefined') ? paymentConfirmed : false,
+    pago1Fecha: (typeof pago1FechaReal !== 'undefined' && pago1FechaReal) ? pago1FechaReal.toISOString() : null,
+    pago1CheckoutUrl: (typeof pago1CheckoutUrl !== 'undefined') ? pago1CheckoutUrl : null,
+    pago1SinCobro: (typeof pago1SinCobro !== 'undefined') ? pago1SinCobro : false,
+    guardadoEn: new Date().toISOString(),
+  };
+  try { localStorage.setItem(ALTA_STORAGE_KEY, JSON.stringify(estado)); } catch(e){}
+}
+
+function leerEstadoAlta(){
+  try {
+    const raw = localStorage.getItem(ALTA_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+
+function borrarEstadoAlta(){
+  try { localStorage.removeItem(ALTA_STORAGE_KEY); } catch(e){}
+}
+
+// Mapea las opciones de los <select>/pills de la maqueta a los valores exactos
+// que existen en los campos singleSelect de Airtable (Clientes, tbl6noqdseYfm4czi).
+const MAP_IDIOMA = { 'Español':'Español', 'English':'Inglés', 'Català':'Otro' };
+const MAP_ENTIDAD = { 'SL (España)':'SL', 'LLC España':'LLC España', 'LLC (EE. UU.)':'LLC', 'Autónomo (en extinción)':'Autónomo Eduardo' };
+const MAP_TIPO_ENTRADA = { estandar:'Estándar', formacion:'Formación', mesgratis:'Primer mes gratis' };
+const MAP_METODO_COBRO = { '27':'SEPA', '28':'Tarjeta' };
+
+function buildClienteFields(){
+  const tipoEntrada = document.querySelector('#mk-tipoentrada .pill-opt.active').dataset.v;
+  return {
+    'Empresa': $('mk-empresa').value.trim(),
+    'Nombre Contacto': $('mk-contacto1').value.trim(),
+    'Email': $('mk-email').value.trim(),
+    'WhatsApp': $('mk-wa').value.trim(),
+    'Teléfono': $('mk-tel').value.trim(),
+    'Ciudad': $('mk-ciudad').value.trim(),
+    'Provincia': $('mk-provincia').value.trim(),
+    'País': $('mk-pais').value.trim(),
+    'Idioma': MAP_IDIOMA[$('mk-idioma').value] || 'Otro',
+    'Entidad Contratante': MAP_ENTIDAD[$('mk-entidad').value] || $('mk-entidad').value,
+    'CIF/NIF': $('mk-cif').value.trim(),
+    'NIF/NIE Representante': $('mk-nif-rep').value.trim(),
+    'Nombre Fiscal': $('mk-nfiscal').value.trim(),
+    'Dirección Completa': $('mk-direccion').value.trim(),
+    'Cliente de Canarias': $('mk-canarias').checked,
+    'Tipo de Entrada': MAP_TIPO_ENTRADA[tipoEntrada] || 'Estándar',
+    'Contact Center': $('mk-cc').checked,
+    'Método de Cobro Recurrente': MAP_METODO_COBRO[$('mk-metodociclo').value] || 'SEPA',
+  };
+}
+
+function setSaveStatus(kind, html){
+  const el = $('mk-save-status');
+  el.className = 'save-status ' + kind;
+  el.innerHTML = html;
+}
+
+function camposObligatoriosBloque1Completos(){
+  const req = ['mk-empresa','mk-contacto1','mk-email','mk-wa','mk-cif','mk-nif-rep','mk-direccion'];
+  return req.every(id => $(id).value.trim() !== '') && document.querySelector('#mk-entidad').value;
+}
+
+function emailValido(v){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim());
+}
+
+async function guardarDatos(){
+  const btn = $('mk-btn-guardar');
+  if(!camposObligatoriosBloque1Completos()){
+    setSaveStatus('err', '<strong>Faltan datos obligatorios</strong> — revisa nombre comercial, contacto principal, email, WhatsApp, CIF/NIF, NIF/NIE representante y dirección fiscal.');
+    return;
+  }
+  if(!emailValido($('mk-email').value)){
+    setSaveStatus('err', '<strong>Email no válido</strong> — revisa el formato (ej. nombre@dominio.com).');
+    return;
+  }
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Guardando…';
+  setSaveStatus('idle', 'Guardando en Airtable…');
+
+  const payload = { record_id: airtableRecordId, fields: buildClienteFields() };
+
+  try{
+    const res = await fetchWithTimeout(N8N_GUARDAR_DATOS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON — se trata como error abajo */ }
+
+    if(!res.ok || !data || data.ok === false || !data.record_id){
+      const msg = (data && data.error) ? data.error : ('Error HTTP ' + res.status);
+      setSaveStatus('err', '<strong>No se pudo guardar</strong> — ' + esc(msg) + '. Revisa los datos y vuelve a intentarlo.');
+      btn.disabled = false;
+      btn.textContent = prevText;
+      return;
+    }
+
+    airtableRecordId = data.record_id;
+    $('mk-id-nemetea').textContent = airtableRecordId;
+    $('mk-ids-card').style.opacity = '1';
+
+    let saveMsg = '<strong>✓ Guardado en Airtable</strong> — registro <span class="rec">' + esc(airtableRecordId) + '</span>. Puedes seguir editando y volver a pulsar «Guardar datos» para actualizarlo.';
+
+    // Si el contrato ya se había enviado (p. ej. con un dato mal puesto), al corregir y
+    // guardar hay que poder volver a enviarlo — si no, el botón se queda bloqueado en
+    // "Contrato enviado ✓" y el cliente firmaría un contrato con datos antiguos.
+    if(contratoEnviado && paymentConfirmed){
+      // El cobro ya está confirmado: no se tumba el contrato ni el paso 4 (el pago sigue siendo válido).
+      saveMsg += ' El pago ya está confirmado, así que el contrato no se reenvía. Si el cambio afecta al contrato (razón social, CIF/NIF, dirección…), avisa para regenerarlo a mano.';
+    } else if(contratoEnviado){
+      contratoEnviado = false;
+      $('mk-btn-enviar').disabled = false;
+      $('mk-btn-enviar').textContent = 'Enviar contrato a SignWell →';
+      $('mk-btn-simular-firma').style.display = 'none';
+      $('mk-check-row').style.display = 'none';
+      $('mk-error-block').style.display = 'none';
+      $('mk-signed-block').style.display = 'none';
+      contractVerified = false;
+      $('mk-verificado').checked = false;
+      updateGates();
+      saveMsg += ' El contrato ya se había enviado — como has actualizado los datos, vuelve a pulsar «Enviar contrato a SignWell» para mandarlo con los datos corregidos.';
+    }
+
+    setSaveStatus('ok', saveMsg);
+    btn.textContent = 'Actualizar datos →';
+    btn.disabled = false;
+    updateEnviarContratoGate();
+    guardarEstadoAlta();
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : 'no se pudo contactar con n8n';
+    setSaveStatus('err', '<strong>No se pudo guardar</strong> — ' + msg + '. No se ha perdido nada, vuelve a pulsar «Guardar datos» para reintentar.');
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+$('mk-btn-guardar').addEventListener('click', guardarDatos);
+
+// Nota: el cliente en Stripe ya NO se crea aquí (paso 1). Se crea en el paso 4, como
+// parte del flujo "Enviar enlace de pago" — así solo existen en Stripe los clientes
+// que de verdad llegan a esa fase, no cualquier lead que rellene el paso 1. El workflow
+// n8n "Stripe - Crear Cliente (Alta)" que ya verificamos no se tira: el futuro workflow
+// de pago lo llama como sub-flujo justo antes de generar la Checkout Session.
+
+function updateEnviarContratoGate(){
+  // El envío de contrato real exige tener ya un record_id de Airtable — si no,
+  // el botón queda visualmente activo (según render()) pero al pulsarlo se avisa.
+  render();
+}
+
+async function enviarContratoReal(){
+  const btn = $('mk-btn-enviar');
+  if(btn.disabled) return;
+
+  if(!airtableRecordId){
+    $('mk-contract-status').innerHTML = '<strong style="color:var(--critical);">Guarda los datos primero</strong> — pulsa «Guardar datos» en el bloque 1 antes de enviar el contrato';
+    return;
+  }
+
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Enviando…';
+
+  try{
+    const res = await fetchWithTimeout(N8N_ENVIAR_CONTRATO_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: airtableRecordId }),
+    }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON */ }
+
+    if(!res.ok || (data && data.ok === false)){
+      const msg = (data && data.error) ? data.error : ('Error HTTP ' + res.status);
+      $('mk-contract-status').innerHTML = '<strong style="color:var(--critical);">Error al enviar</strong> — ' + esc(msg) + '. Revisado en Slack (#systems) automáticamente.';
+      btn.disabled = false;
+      btn.textContent = prevText;
+      return;
+    }
+
+    contratoEnviado = true;
+    btn.textContent = 'Contrato enviado ✓';
+    $('mk-contract-status').innerHTML = '<strong style="color:var(--good);">✓ Enviado a SignWell</strong> — esperando firma del cliente';
+    $('mk-btn-simular-firma').style.display = 'inline-block'; // demo local, no llama a n8n
+    $('mk-check-row').style.display = 'flex';
+    $('mk-check-status').textContent = 'Esperando a que el cliente firme en SignWell.';
+    guardarEstadoAlta();
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : 'no se pudo contactar con n8n';
+    $('mk-contract-status').innerHTML = '<strong style="color:var(--critical);">Error al enviar</strong> — ' + msg + '. Vuelve a intentarlo.';
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+$('mk-btn-enviar').addEventListener('click', enviarContratoReal);
+
+// ---- comprobación real del estado de firma (consulta Airtable a través de n8n) ----
+// Refleja lo que ya escribe el flujo n8n "SignWell - Documento Firmado" al recibir el
+// webhook de SignWell: Estado de Envío de Contrato + Contrato Firmado (URL) en Airtable.
+async function comprobarEstadoContrato(){
+  if(!airtableRecordId){
+    $('mk-check-status').textContent = 'Guarda los datos primero — no hay registro de Airtable que consultar.';
+    return;
+  }
+  const btn = $('mk-btn-comprobar');
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Comprobando…';
+
+  try{
+    const url = N8N_CONSULTAR_ESTADO_URL + '?record_id=' + encodeURIComponent(airtableRecordId);
+    const res = await fetchWithTimeout(url, { method: 'GET' }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON */ }
+
+    if(!res.ok || !data || data.ok === false){
+      $('mk-check-status').textContent = 'No se pudo comprobar el estado ahora mismo. Vuelve a intentarlo en un momento.';
+      $('mk-error-block').style.display = 'none';
+      $('mk-signed-block').style.display = 'none';
+      return;
+    }
+
+    if(data.estado === 'Firmado' && safeUrl(data.contratoUrl)){
+      contratoFirmadoUrl = safeUrl(data.contratoUrl);
+      $('mk-error-block').style.display = 'none';
+      $('mk-check-row').style.display = 'none';
+      $('mk-signed-block').style.display = 'flex';
+      $('mk-signed-date').textContent = 'confirmado por SignWell';
+      $('mk-btn-ver').href = safeUrl(data.contratoUrl);
+    } else if(data.estado === 'Error'){
+      $('mk-signed-block').style.display = 'none';
+      $('mk-error-block').style.display = 'block';
+      $('mk-error-detalle').textContent = data.detalleError || 'sin detalle — revisa el flujo en n8n';
+      $('mk-check-status').textContent = 'Hubo un error en el envío — revisa el detalle de arriba.';
+    } else {
+      // 'Enviado' o estado todavía no reflejado — sigue esperando
+      $('mk-error-block').style.display = 'none';
+      $('mk-signed-block').style.display = 'none';
+      $('mk-check-status').textContent = 'Todavía no ha firmado — sigue esperando (estado: ' + (data.estado || 'Enviado') + ').';
+    }
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : 'no se pudo contactar con n8n';
+    $('mk-check-status').textContent = 'No se pudo comprobar el estado — ' + msg + '.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+$('mk-btn-comprobar').addEventListener('click', comprobarEstadoContrato);
+
+// ---- pill toggle (tipo de entrada) ----
+document.getElementById('mk-tipoentrada').addEventListener('click', (e)=>{
+  const opt = e.target.closest('.pill-opt'); if(!opt) return;
+  document.querySelectorAll('#mk-tipoentrada .pill-opt').forEach(p=>p.classList.remove('active'));
+  opt.classList.add('active');
+  render();
+  updateGates();
+});
+
+const fmtEUR = (n) => n.toLocaleString('es-ES', {style:'currency', currency:'EUR', maximumFractionDigits:2});
+const fmtDateTime = (d) => d.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'});
+
+// Precios validados con Eduardo / contrato real — fijos para este mockup.
+const P1 = 248.50, CUOTA_M1 = 497, CUOTA_NUEVA = 647, IVA = .21, IGIC = .07;
+
+// Se rellena cuando se confirma el cobro del Pago 1 (paso 4) — es la única fecha real que conocemos en el alta.
+let pago1FechaReal = null;
+let pago1CheckoutUrl = null; // URL real de Stripe Checkout devuelta por n8n al enviar el enlace de pago
+let pago1ErrorMsg = null; // mensaje de error de la última llamada a /enviar-enlace-pago, si la hubo
+let pago1SinCobro = false; // true si el Pago 1 no aplica (Formación sin Contact Center) — no pasa por Stripe
+
+// El ID Nemetea (Airtable) ya es real y lo rellena guardarDatos() con el record_id devuelto.
+// El ID de Stripe NO se inventa aquí — lo crea Stripe de verdad cuando se construya el flujo
+// de pago (paso 4); hasta entonces el campo se queda en "Pendiente".
+
+function render(){
+  const esCanarias = $('mk-canarias').checked;
+  const tipoEntrada = document.querySelector('#mk-tipoentrada .pill-opt.active').dataset.v;
+  const esCortesia = tipoEntrada === 'formacion' || tipoEntrada === 'mesgratis';
+  const taxRate = esCanarias ? IGIC : IVA;
+  const taxLabel = esCanarias ? 'IGIC' : 'IVA';
+  const withTax = (base) => ({ base, total: base * (1+taxRate) });
+  const cicloDay = parseInt($('mk-metodociclo').value, 10);
+  const cicloLabel = cicloDay === 27 ? 'Día 27 de cada mes · SEPA' : 'Día 28 de cada mes · Tarjeta';
+
+  const pago1 = withTax(P1);
+  const pago2Base = esCortesia ? 0 : Math.max(0, CUOTA_M1 - P1);
+  const pago2 = withTax(pago2Base);
+  const pago3 = withTax(CUOTA_NUEVA);
+  const pago4 = withTax(CUOTA_NUEVA);
+  const ciclo = withTax(CUOTA_NUEVA);
+
+  const pendienteLanz = 'Fecha por confirmar · depende de cuándo se lance la campaña';
+
+  const rows = [
+    {t:'Pago 1 · activación', date: pago1FechaReal ? fmtDateTime(pago1FechaReal) : 'Pendiente de cobro (paso 4)', sub:'Fijo, sin importar cuota', tax:pago1},
+    {t:'Pago 2 · resto cuota mes 1', date: pendienteLanz, sub: esCortesia ? 'Gratis — cortesía del tipo de entrada' : '', tax:pago2, zero: esCortesia},
+    {t:'Mes 2 · permanencia', date: pendienteLanz, sub:'', tax:pago3},
+    {t:'Mes 3 · permanencia — fin', date: pendienteLanz, sub:'', tax:pago4},
+  ];
+
+  const html = rows.map(r => `
+    <div class="cal-row">
+      <div class="cal-l"><span class="c-title">${r.t}</span><span class="c-date">${r.date}${r.sub ? ' · '+r.sub : ''}</span></div>
+      <div class="cal-r"><span class="amt ${r.zero?'zero':''}">${r.zero ? 'Gratis' : fmtEUR(r.tax.base)}</span>${r.zero?'':`<div class="tax">con ${taxLabel}: ${fmtEUR(r.tax.total)}</div>`}</div>
+    </div>`).join('');
+
+  const prorrateoRow = `
+    <div class="cal-row">
+      <div class="cal-l"><span class="c-title">Prorrateo · cierra el mes</span><span class="c-date">Se calcula solo al fijar el lanzamiento — días hasta el siguiente ciclo</span></div>
+      <div class="cal-r"><span class="amt zero">A calcular</span></div>
+    </div>`;
+
+  const recurRows = ['Mes 4 · ciclo natural','Mes 5 · ciclo natural'].map(t => `
+    <div class="cal-row">
+      <div class="cal-l"><span class="c-title">${t}</span><span class="c-date">${cicloLabel}</span></div>
+      <div class="cal-r"><span class="amt">${fmtEUR(ciclo.base)}</span><div class="tax">con ${taxLabel}: ${fmtEUR(ciclo.total)}</div></div>
+    </div>`).join('');
+
+  $('mk-calendar').innerHTML = html + prorrateoRow + recurRows + `
+    <div class="milestone"><div class="m-t">Fin de permanencia (mes 3) — el cliente puede darse de baja aquí</div><div class="m-d">Si continúa, entra en el ciclo natural de arriba — ${cicloLabel.toLowerCase()}</div></div>
+  `;
+
+  // ---- paso 3 — vista previa de contrato (depende solo de los bloques 1-2) ----
+  const tipoLabel = {estandar:'Estándar', formacion:'Formación', mesgratis:'Mes gratis'}[tipoEntrada];
+  const empresa = $('mk-empresa').value || '—';
+  const contacto = $('mk-contacto1').value || '—';
+  const cif = $('mk-cif').value || '—';
+  const entidad = $('mk-entidad').value;
+  const cc = $('mk-cc').checked;
+
+  $('mk-contract-preview').innerHTML =
+    `${esc(empresa)} · ${esc(contacto)}<br>` +
+    `${esc(entidad)} · CIF/NIF ${esc(cif)}<br>` +
+    `Tipo de entrada: <strong>${tipoLabel}</strong> — Pago 2 ${esCortesia ? 'gratis (cortesía)' : fmtEUR(pago2.base) + ' + ' + taxLabel}<br>` +
+    `Contact Center: ${cc ? 'incluido (regalo de fase de alta)' : 'no incluido'}`;
+
+  const camposListos = empresa !== '—' && contacto !== '—' && cif !== '—';
+  const listoParaEnviar = camposListos && !!airtableRecordId;
+  if(!contratoEnviado && !$('mk-btn-enviar').textContent.includes('Enviando')){
+    if(!camposListos){
+      $('mk-contract-status').innerHTML = `<strong style="color:var(--critical);">Faltan datos</strong> — completa el bloque 1`;
+    } else if(!airtableRecordId){
+      $('mk-contract-status').innerHTML = `<strong style="color:var(--warn);">Datos sin guardar</strong> — pulsa «Guardar datos» en el bloque 1 primero`;
+    } else {
+      $('mk-contract-status').innerHTML = `<strong style="color:var(--good);">Listo para enviar</strong> — guardado como <span class="mono">${esc(airtableRecordId)}</span>`;
+    }
+    $('mk-btn-enviar').disabled = !listoParaEnviar;
+    $('mk-btn-enviar').style.opacity = listoParaEnviar ? '1' : '.55';
+    $('mk-btn-enviar').style.cursor = listoParaEnviar ? 'pointer' : 'not-allowed';
+  }
+}
+
+['mk-canarias','mk-metodociclo','mk-empresa','mk-contacto1','mk-cif','mk-nif-rep','mk-direccion','mk-entidad','mk-cc'].forEach(id=>{
+  $(id).addEventListener('input', render);
+  $(id).addEventListener('change', render);
+});
+// Contact Center y "Es de Canarias" también cambian el importe/estado del Pago 1 mostrado
+// en el Bloque 4 — updateGates() se define más abajo, pero estos listeners solo se disparan
+// con la interacción del usuario, ya con el script completamente cargado.
+['mk-cc','mk-canarias'].forEach(id=>{
+  $(id).addEventListener('input', ()=>updateGates());
+  $(id).addEventListener('change', ()=>updateGates());
+});
+PERSIST_FIELD_IDS.forEach(id => {
+  const el = $(id); if(!el) return;
+  el.addEventListener('input', guardarEstadoAlta);
+  el.addEventListener('change', guardarEstadoAlta);
+});
+document.getElementById('mk-tipoentrada').addEventListener('click', () => setTimeout(guardarEstadoAlta, 0));
+render();
+
+// ---- paso 3→4 — verificación y pago (el pago sigue simulado — flujo de n8n aparte, no construido) ----
+let contractVerified = false, paymentSent = false, paymentConfirmed = false;
+
+function updateGates(){
+  const esCanarias = $('mk-canarias').checked;
+  const taxRate = esCanarias ? .07 : .21;
+  const taxLabel = esCanarias ? 'IGIC' : 'IVA';
+  // Precio del Pago 1 según Tipo de Entrada + Contact Center (tabla de "Alta de Clientes —
+  // Resumen Técnico"): Estándar/Mes gratis = 248,50€ · Formación con CC = 150€ · Formación
+  // sin CC = 0€ (no pasa por Stripe). Antes este bloque mostraba siempre 248,50€ sin mirar
+  // ninguno de los dos campos — el closer veía un importe que no era el que de verdad se iba
+  // a cobrar (o no cobrar) para un cliente de Formación.
+  const tipoEntradaActivo = document.querySelector('#mk-tipoentrada .pill-opt.active').dataset.v;
+  const esFormacion = tipoEntradaActivo === 'formacion';
+  const cc = $('mk-cc').checked;
+  const P1 = esFormacion ? (cc ? 150 : 0) : 248.50;
+  const sinCobroPorTipo = esFormacion && !cc;
+  const total = P1 * (1+taxRate);
+
+  // Paso 4 — enlace de pago: bloqueado hasta que el comercial marca el contrato como revisado.
+  const pagoCard = $('mk-pago-card');
+  $('mk-payment-preview').innerHTML = sinCobroPorTipo
+    ? `${esc($('mk-contacto1').value || '—')} · ${esc($('mk-email').value || '—')}<br>` +
+      `Pago 1 — activación: <strong>Gratis</strong> — Formación sin Contact Center, no hay nada que cobrar (no pasa por Stripe)`
+    : `${esc($('mk-contacto1').value || '—')} · ${esc($('mk-email').value || '—')}<br>` +
+      `Pago 1 — activación: <strong>${P1.toLocaleString('es-ES',{style:'currency',currency:'EUR'})}</strong> + ${taxLabel} = ${total.toLocaleString('es-ES',{style:'currency',currency:'EUR'})}<br>` +
+      `Método: Tarjeta (Stripe Checkout) — no admite SEPA`;
+
+  if(!contractVerified){
+    $('mk-payment-status').innerHTML = `<strong style="color:var(--ink-faint);">Bloqueado</strong> — revisa el contrato firmado en el paso 3`;
+    $('mk-btn-pago').disabled = true;
+    pagoCard.style.opacity = '.55';
+  } else if(pago1ErrorMsg){
+    $('mk-payment-status').innerHTML = `<strong style="color:var(--critical);">Error al enviar</strong> — ${esc(pago1ErrorMsg)}`;
+    $('mk-btn-pago').disabled = false;
+    $('mk-btn-pago').textContent = 'Reintentar envío →';
+    pagoCard.style.opacity = '1';
+  } else if(!paymentSent){
+    $('mk-payment-status').innerHTML = `<strong style="color:var(--good);">Listo para enviar</strong> — contrato revisado`;
+    $('mk-btn-pago').disabled = false;
+    pagoCard.style.opacity = '1';
+  } else if(!paymentConfirmed){
+    $('mk-payment-status').innerHTML = `<strong style="color:var(--warn);">Enviado — esperando cobro</strong>` +
+      (safeUrl(pago1CheckoutUrl) ? ` · <a href="${esc(safeUrl(pago1CheckoutUrl))}" target="_blank" rel="noopener">ver enlace de pago</a>` : '');
+    $('mk-btn-pago').disabled = true;
+    pagoCard.style.opacity = '1';
+  } else if(pago1SinCobro){
+    $('mk-payment-status').innerHTML = `<strong style="color:var(--good);">✓ Sin cobro</strong> — Formación sin Contact Center, no hay nada que pagar · se activa el acceso y sale el email de bienvenida`;
+    $('mk-btn-pago').disabled = true;
+    pagoCard.style.opacity = '1';
+    pagoCard.style.borderColor = 'var(--good)';
+    pagoCard.style.background = 'var(--good-soft)';
+  } else {
+    $('mk-payment-status').innerHTML = `<strong style="color:var(--good);">✓ Pago realizado</strong> — ${fmtDateTime(pago1FechaReal)} · se activa el acceso y sale el email de bienvenida`;
+    $('mk-btn-pago').disabled = true;
+    pagoCard.style.opacity = '1';
+    pagoCard.style.borderColor = 'var(--good)';
+    pagoCard.style.background = 'var(--good-soft)';
+  }
+  $('mk-pago-badge').style.display = paymentConfirmed ? 'inline-flex' : 'none';
+  $('mk-btn-pago').style.cursor = $('mk-btn-pago').disabled ? 'not-allowed' : 'pointer';
+}
+
+$('mk-btn-simular-firma').addEventListener('click', () => {
+  $('mk-error-block').style.display = 'none';
+  $('mk-check-row').style.display = 'none';
+  $('mk-signed-block').style.display = 'flex';
+  $('mk-signed-date').textContent = new Date().toLocaleDateString('es-ES', {day:'2-digit', month:'long', year:'numeric'}) + ' (demo, dato local)';
+  $('mk-btn-ver').href = '#';
+  $('mk-btn-simular-firma').style.display = 'none';
+  updateGates();
+});
+
+$('mk-verificado').addEventListener('change', (e) => {
+  contractVerified = e.target.checked;
+  updateGates();
+  guardarEstadoAlta();
+});
+
+async function enviarEnlacePagoReal(){
+  if($('mk-btn-pago').disabled) return;
+  if(!airtableRecordId){
+    pago1ErrorMsg = 'No hay registro de Airtable guardado — guarda los datos del bloque 1 primero.';
+    updateGates();
+    return;
+  }
+  const btn = $('mk-btn-pago');
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Enviando…';
+  pago1ErrorMsg = null;
+
+  try{
+    const res = await fetchWithTimeout(N8N_ENVIAR_ENLACE_PAGO_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: airtableRecordId }),
+    }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON */ }
+
+    if(!res.ok || !data || data.ok !== true){
+      pago1ErrorMsg = (data && data.error) || 'No se pudo generar el enlace de pago. Vuelve a intentarlo.';
+      btn.textContent = prevText;
+      updateGates();
+      return;
+    }
+
+    if(data.sinCobro === true){
+      // Formación sin Contact Center — no hay nada que cobrar, no pasa por Stripe.
+      // Se confirma directo, sin esperar ningún webhook.
+      paymentSent = true;
+      paymentConfirmed = true;
+      pago1SinCobro = true;
+      pago1FechaReal = new Date();
+      pago1CheckoutUrl = null;
+      btn.textContent = 'Sin cobro ✓';
+      $('mk-pago-check-row').style.display = 'none';
+      updateGates();
+      render();
+      updateAltaButton();
+      guardarEstadoAlta();
+      return;
+    }
+
+    paymentSent = true;
+    pago1CheckoutUrl = data.checkoutUrl;
+    btn.textContent = 'Enlace enviado ✓';
+    $('mk-pago-check-row').style.display = 'flex';
+    $('mk-pago-check-status').textContent = 'Esperando a que Stripe confirme el cobro.';
+    updateGates();
+    guardarEstadoAlta();
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : 'no se pudo contactar con n8n';
+    pago1ErrorMsg = msg;
+    btn.textContent = prevText;
+    updateGates();
+  }
+}
+$('mk-btn-pago').addEventListener('click', enviarEnlacePagoReal);
+
+// ---- comprobación real del estado de cobro (consulta Airtable a través de n8n) ----
+// Refleja lo que ya escribe el flujo n8n "Stripe - Confirmación de Pago (Webhook)" al
+// recibir el checkout.session.completed verificado: Estado del Pago 1 + Fecha de Pago 1.
+async function comprobarEstadoPago(){
+  if(!airtableRecordId){
+    $('mk-pago-check-status').textContent = 'Guarda los datos primero — no hay registro de Airtable que consultar.';
+    return;
+  }
+  const btn = $('mk-btn-comprobar-pago');
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Comprobando…';
+
+  try{
+    const url = N8N_CONSULTAR_ESTADO_PAGO_URL + '?record_id=' + encodeURIComponent(airtableRecordId);
+    const res = await fetchWithTimeout(url, { method: 'GET' }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON */ }
+
+    if(!res.ok || !data || data.ok === false){
+      $('mk-pago-check-status').textContent = 'No se pudo comprobar el estado ahora mismo. Vuelve a intentarlo en un momento.';
+      return;
+    }
+
+    if(data.estado === 'Cobrado'){
+      paymentConfirmed = true;
+      pago1FechaReal = data.fechaPago ? new Date(data.fechaPago) : new Date();
+      pago1ErrorMsg = null;
+      $('mk-pago-check-row').style.display = 'none';
+      updateGates();
+      render();
+      updateAltaButton();
+      guardarEstadoAlta();
+    } else if(data.estado === 'Sin cobro (Impulxer)'){
+      // Formación sin Contact Center — no hay nada que cobrar, se da por confirmado.
+      paymentConfirmed = true;
+      pago1SinCobro = true;
+      pago1FechaReal = data.fechaPago ? new Date(data.fechaPago) : new Date();
+      pago1ErrorMsg = null;
+      $('mk-pago-check-row').style.display = 'none';
+      updateGates();
+      render();
+      updateAltaButton();
+      guardarEstadoAlta();
+    } else if(data.estado === 'Error'){
+      pago1ErrorMsg = data.detalleError || 'Hubo un error confirmado por Stripe — revisa el flujo en n8n.';
+      updateGates();
+    } else {
+      // 'Enviado' o estado todavía no reflejado — sigue esperando
+      $('mk-pago-check-status').textContent = 'Todavía no hay cobro confirmado — sigue esperando (estado: ' + (data.estado || 'Enviado') + ').';
+    }
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : 'no se pudo contactar con n8n';
+    $('mk-pago-check-status').textContent = 'No se pudo comprobar el estado — ' + msg + '.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+$('mk-btn-comprobar-pago').addEventListener('click', comprobarEstadoPago);
+
+// ---- botón final — dar de alta → notifica a Slack al equipo de onboarding/campañas ----
+function updateAltaButton(){
+  const btn = $('mk-btn-alta');
+  if(!paymentConfirmed){
+    btn.disabled = true;
+    btn.style.opacity = '.55';
+    btn.style.cursor = 'not-allowed';
+    $('mk-alta-hint').textContent = '5 bloques · ~2 min de closer, cero cálculo a mano · se activa cuando el Pago 1 está confirmado (paso 4)';
+  } else {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+    $('mk-alta-hint').textContent = '5 bloques · ~2 min de closer, cero cálculo a mano · documentación se gestiona en el panel de Fase 1';
+  }
+}
+updateAltaButton();
+
+$('mk-btn-alta').addEventListener('click', () => {
+  if($('mk-btn-alta').disabled) return;
+  $('mk-btn-alta').disabled = true;
+  $('mk-btn-alta').textContent = 'Cliente dado de alta ✓';
+  $('mk-btn-alta').style.opacity = '1';
+  $('mk-alta-confirm').style.display = 'block';
+
+  const empresa = $('mk-empresa').value || '—';
+  const contacto = $('mk-contacto1').value || '—';
+  const tipoEntrada = document.querySelector('#mk-tipoentrada .pill-opt.active').textContent;
+  const cc = $('mk-cc').checked ? 'Sí' : 'No';
+  const comercial = $('mk-comercial').value;
+  $('mk-slack-preview').textContent =
+`#onboarding — Nueva alta lista para campaña
+Nombre comercial: ${empresa}
+Persona de contacto: ${contacto}
+ID Nemetea (Airtable): ${airtableRecordId || '—'}
+Tipo de entrada: ${tipoEntrada} · Contact Center: ${cc}
+Comercial: ${comercial}
+Pago 1: confirmado — ${fmtDateTime(pago1FechaReal)}
+→ Ver ficha en Airtable (${airtableRecordId || '—'})`;
+
+  exportarMontajeCampanas();
+  exportarDatosBruto();
+});
+
+// ---- exportación PROVISIONAL en bruto — "NEMETEA - Datos en Bruto de Altas (CRM)" ----
+// Manda TODO lo que el closer ha introducido en el CRM, tal cual, más los datos que genera
+// el propio sistema (record_id, importes calculados, URLs de contrato y de pago). Solo se
+// llama una vez, al dar de alta — igual que exportarMontajeCampanas(), no se repite sola si
+// se retoma un alta ya exportada; para eso está el botón de reintento.
+function buildDatosBrutoFields(){
+  const tipoEntrada = document.querySelector('#mk-tipoentrada .pill-opt.active').textContent.trim();
+  const taxRate = $('mk-canarias').checked ? IGIC : IVA;
+  const pago1Total = P1 * (1 + taxRate);
+  let usuarioCRM = '';
+  try { usuarioCRM = localStorage.getItem('nemetea_auth_user') || ''; } catch(e){}
+
+  return {
+    fecha_hora_alta: new Date().toISOString(),
+    record_id: airtableRecordId || '',
+    usuario_crm: usuarioCRM,
+    nombre_comercial: $('mk-empresa').value.trim(),
+    contacto_principal: $('mk-contacto1').value.trim(),
+    contacto_secundario: $('mk-contacto2').value.trim(),
+    email: $('mk-email').value.trim(),
+    whatsapp: $('mk-wa').value.trim(),
+    telefono: $('mk-tel').value.trim(),
+    ciudad: $('mk-ciudad').value.trim(),
+    provincia: $('mk-provincia').value.trim(),
+    pais: $('mk-pais').value.trim(),
+    idioma: $('mk-idioma').value,
+    entidad_contratante: $('mk-entidad').value,
+    cif_nif: $('mk-cif').value.trim(),
+    nif_nie_representante: $('mk-nif-rep').value.trim(),
+    nombre_fiscal: $('mk-nfiscal').value.trim(),
+    direccion_completa: $('mk-direccion').value.trim(),
+    cliente_canarias: $('mk-canarias').checked ? 'Sí' : 'No',
+    tipo_entrada: tipoEntrada,
+    contact_center: $('mk-cc').checked ? 'Sí' : 'No',
+    metodo_cobro_recurrente: MAP_METODO_COBRO[$('mk-metodociclo').value] || 'SEPA',
+    procedencia_categoria: $('mk-categoria').value,
+    responsable_comercial: $('mk-comercial').value,
+    referidor: $('mk-referidor').value,
+    contrato_firmado: contratoFirmadoUrl ? 'Sí' : (contratoEnviado ? 'Enviado' : ''),
+    url_contrato_firmado: contratoFirmadoUrl || '',
+    pago1_importe: pago1Total.toFixed(2),
+    pago1_fecha: pago1FechaReal ? pago1FechaReal.toISOString() : '',
+    url_checkout_pago: pago1CheckoutUrl || '',
+  };
+}
+
+async function exportarDatosBruto(){
+  const statusEl = $('mk-export-bruto-status');
+  const retryBtn = $('mk-btn-reintentar-export-bruto');
+  statusEl.textContent = 'Exportando a la hoja de datos en bruto…';
+  statusEl.style.color = '';
+  retryBtn.style.display = 'none';
+
+  try{
+    const res = await fetchWithTimeout(N8N_EXPORTAR_BRUTO_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: airtableRecordId, fields: buildDatosBrutoFields() }),
+    }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON */ }
+
+    if(!res.ok || (data && data.ok === false)){
+      throw new Error((data && data.error) ? data.error : ('Error HTTP ' + res.status));
+    }
+    statusEl.textContent = '✓ Exportado a la hoja de datos en bruto';
+    statusEl.style.color = 'var(--good)';
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : (err.message || 'no se pudo contactar con n8n');
+    statusEl.textContent = 'No se pudo exportar a la hoja de datos en bruto — ' + msg + '. El alta en Airtable no se ha visto afectada.';
+    statusEl.style.color = 'var(--critical)';
+    retryBtn.style.display = 'inline-block';
+  }
+}
+$('mk-btn-reintentar-export-bruto').addEventListener('click', exportarDatosBruto);
+
+// ---- exportación PROVISIONAL a "NEMETEA - Montaje de campañas" (Google Sheets vía n8n) ----
+// Solo se llama una vez, al dar de alta. Es una fila nueva, no actualiza filas existentes —
+// si se retoma un alta ya exportada (ver restaurarAlta()), NO se vuelve a exportar sola;
+// hay que usar «Reintentar exportación» a mano si hiciera falta.
+function buildMontajeCampanasFields(){
+  return {
+    empresa: $('mk-empresa').value.trim(),
+    contacto: $('mk-contacto1').value.trim(),
+    email: $('mk-email').value.trim(),
+    whatsapp: $('mk-wa').value.trim(),
+    direccion: $('mk-direccion').value.trim(),
+    pais: $('mk-pais').value.trim(),
+    ciudad: $('mk-ciudad').value.trim(),
+    procedencia_categoria: $('mk-categoria').value,
+    procedencia_subcategoria: ($('mk-referidor').value === '— Sin referidor —') ? 'No aplica' : $('mk-referidor').value,
+    idioma_campana: $('mk-idioma').value,
+    fecha_llamada: fmtDateTime(new Date()),
+    contrato_firmado: 'Sí',
+    pago_inicial: 'Sí',
+    fecha_primer_pago: pago1FechaReal ? fmtDateTime(pago1FechaReal) : '',
+  };
+}
+
+async function exportarMontajeCampanas(){
+  const statusEl = $('mk-export-status');
+  const retryBtn = $('mk-btn-reintentar-export');
+  statusEl.textContent = 'Exportando a «Montaje de campañas»…';
+  statusEl.style.color = '';
+  retryBtn.style.display = 'none';
+
+  try{
+    const res = await fetchWithTimeout(N8N_EXPORTAR_MONTAJE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ record_id: airtableRecordId, fields: buildMontajeCampanasFields() }),
+    }, FETCH_TIMEOUT_MS);
+
+    let data = null;
+    try{ data = await res.json(); }catch(e){ /* respuesta no-JSON */ }
+
+    if(!res.ok || (data && data.ok === false)){
+      throw new Error((data && data.error) ? data.error : ('Error HTTP ' + res.status));
+    }
+    statusEl.textContent = '✓ Exportado a «Montaje de campañas»';
+    statusEl.style.color = 'var(--good)';
+  } catch(err){
+    const msg = err.name === 'AbortError' ? 'tardó demasiado en responder (timeout)' : (err.message || 'no se pudo contactar con n8n');
+    statusEl.textContent = 'No se pudo exportar a «Montaje de campañas» — ' + msg + '. El alta en Airtable no se ha visto afectada.';
+    statusEl.style.color = 'var(--critical)';
+    retryBtn.style.display = 'inline-block';
+  }
+}
+$('mk-btn-reintentar-export').addEventListener('click', exportarMontajeCampanas);
+
+// "Ver contrato firmado" es un enlace real (href = Contrato Firmado (URL) de Airtable).
+// En el camino de demo (simular firma) no hay URL real, así que evitamos que navegue a "#".
+$('mk-btn-ver').addEventListener('click', (e) => {
+  if($('mk-btn-ver').getAttribute('href') === '#') e.preventDefault();
+});
+
+updateGates();
+
+// ============ retomar alta en curso / nueva alta ============
+function restaurarAlta(){
+  const st = leerEstadoAlta();
+  if(!st) return;
+  restaurandoAlta = true;
+  try{
+    if(st.campos){
+      Object.entries(st.campos).forEach(([id, v]) => {
+        const el = $(id); if(!el) return;
+        if(el.type === 'checkbox') el.checked = !!v; else el.value = v;
+      });
+    }
+    if(st.tipoEntrada){
+      const opt = document.querySelector('#mk-tipoentrada .pill-opt[data-v="' + st.tipoEntrada + '"]');
+      if(opt){
+        document.querySelectorAll('#mk-tipoentrada .pill-opt').forEach(p=>p.classList.remove('active'));
+        opt.classList.add('active');
+      }
+    }
+
+    if(st.recordId){
+      airtableRecordId = st.recordId;
+      $('mk-id-nemetea').textContent = airtableRecordId;
+      $('mk-ids-card').style.opacity = '1';
+      $('mk-btn-guardar').textContent = 'Actualizar datos →';
+      setSaveStatus('ok', '<strong>↺ Alta retomada</strong> — registro <span class="rec">' + esc(airtableRecordId) +
+        '</span> (' + esc(st.campos && st.campos['mk-empresa'] || '—') + '). «Actualizar datos» modifica ese registro, no crea otro. Si vas a dar de alta a otro cliente, pulsa «+ Nueva alta».');
+    }
+
+    if(st.contratoEnviado){
+      contratoEnviado = true;
+      $('mk-btn-enviar').textContent = 'Contrato enviado ✓';
+      $('mk-btn-enviar').disabled = true;
+      $('mk-contract-status').innerHTML = '<strong style="color:var(--good);">✓ Enviado a SignWell</strong> — esperando firma del cliente';
+      $('mk-check-row').style.display = 'flex';
+      $('mk-check-status').textContent = 'Comprobando el estado del contrato…';
+    }
+    if(st.contractVerified){
+      contractVerified = true;
+      $('mk-verificado').checked = true;
+    }
+    if(st.paymentSent){
+      paymentSent = true;
+      pago1CheckoutUrl = st.pago1CheckoutUrl || null;
+      $('mk-btn-pago').textContent = 'Enlace enviado ✓';
+    }
+    if(st.paymentConfirmed){
+      paymentConfirmed = true;
+      pago1SinCobro = !!st.pago1SinCobro;
+      pago1FechaReal = st.pago1Fecha ? new Date(st.pago1Fecha) : new Date();
+      $('mk-pago-check-row').style.display = 'none';
+      if(pago1SinCobro) $('mk-btn-pago').textContent = 'Sin cobro ✓';
+    } else if(st.paymentSent){
+      $('mk-pago-check-row').style.display = 'flex';
+      $('mk-pago-check-status').textContent = 'Comprobando el estado del pago…';
+    }
+  } finally {
+    restaurandoAlta = false;
+  }
+
+  render();
+  updateGates();
+  updateAltaButton();
+
+  // Sincroniza con Airtable (fuente de verdad) lo que estaba a medias.
+  if(airtableRecordId && contratoEnviado) comprobarEstadoContrato();
+  if(airtableRecordId && paymentSent && !paymentConfirmed) comprobarEstadoPago();
+}
+restaurarAlta();
+
+$('mk-btn-nueva-alta').addEventListener('click', () => {
+  const hayAlta = !!airtableRecordId;
+  const msg = hayAlta
+    ? 'Vas a empezar una alta nueva. El cliente actual (' + ($('mk-empresa').value || airtableRecordId) + ') ya está guardado en Airtable y no se borra — solo se limpia esta pantalla. ¿Continuar?'
+    : 'Se borrarán los datos escritos en esta pantalla. ¿Continuar?';
+  if(!window.confirm(msg)) return;
+  borrarEstadoAlta();
+  window.location.reload();
+});
+</script>
