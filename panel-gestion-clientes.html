@@ -722,6 +722,10 @@ function renderDetail(){
                 <span>Assets asociados: ${cp.assetsCount}${cp.landingUrl ? ` · <a href="${cp.landingUrl}" target="_blank" rel="noopener">ver landing ↗</a>` : ''}</span>
                 <span>Ofertas asociadas: ${cp.ofertasCount}</span>
               </div>
+              <div class="cactions">
+                <button type="button" class="ghost sm" data-action="pausa-vacaciones" data-campana-id="${cp.id}">⏸ Pausa vacaciones</button>
+                <button type="button" class="danger sm" data-action="dar-de-baja" data-campana-id="${cp.id}">Dar de baja</button>
+              </div>
             </div>
           `).join('')}
         </div>
