@@ -1525,6 +1525,19 @@ Cualquier duda, responde a este mismo WhatsApp.
 // ---------------------------------------------------------------
 const N8N_BASE = "https://n8n.nemetea.com/webhook";
 
+// POST a un webhook de n8n que lanza si la respuesta no es 2xx (un fetch()
+// normal no lanza por un HTTP 500, solo por fallo de red) — así el catch de
+// cada acción de escritura detecta también los errores del propio servidor.
+async function postN8n(path, body){
+  const res = await fetch(`${N8N_BASE}/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res;
+}
+
 let clientesReales = [];
 let cbSelected = null;
 let cbLoading = true;
@@ -1916,20 +1929,27 @@ function renderCalendarioCobroHTML(c){
   const pago1Base = esFormacion ? (c.cc ? 150 : 0) : 248.50;
   const pago1Total = pago1Base * factorImpuesto;
 
-  // Si todavía no se ha rellenado la Cuota NEMETEA en Airtable, no hay datos reales
-  // para el resto del calendario. En vez de enseñar 0€ (que parece un error),
-  // mostramos una cifra orientativa (la cuota estándar) marcada como estimada,
-  // solo para que Micaela tenga una referencia — nunca se usa para cobrar de verdad.
+  // Pago 2 usa la cuota real del mes 1 (ya viene de Airtable — Regla cuota mes 1).
+  // Si todavía no se ha rellenado, mostramos una cifra orientativa marcada como estimada.
   const CUOTA_ORIENTATIVA = 647;
   const cuotaReal = c.cuotaNemetea || 0;
   const esEstimado = !esCortesia && cuotaReal === 0;
   const cuota = esEstimado ? CUOTA_ORIENTATIVA : cuotaReal;
   const pago2Base = esCortesia ? 0 : Math.max(0, cuota - pago1Base);
   const pago2Total = pago2Base * factorImpuesto;
-  const totalConImpuestosReal = c.totalConImpuestos || 0;
-  const totalConImpuestos = esEstimado ? (cuota + (c.ccACobrar || 0)) * factorImpuesto : totalConImpuestosReal;
-  const baseMensual = factorImpuesto ? totalConImpuestos / factorImpuesto : totalConImpuestos;
   const estimadoSub = esEstimado ? "Estimado — falta Cuota NEMETEA en Airtable" : "";
+
+  // Meses 2 en adelante: "Total a Cobrar" solo se calcula en Airtable cuando el
+  // cliente ya tiene campaña facturable, así que mientras esté en Onboarding/Cobro
+  // (sin campaña todavía) sale 0 — no es un error, es que aún no hay campaña que
+  // facturar. Mostramos como referencia la cuota periódica (Cuota NEMETEA) + IVA,
+  // marcada como referencia, para que el equipo tenga una cifra orientativa.
+  const totalConImpuestosReal = c.totalConImpuestos || 0;
+  const cuotaPeriodicaRef = c.cuotaPeriodica || cuota;
+  const esReferenciaMensual = !esCortesia && totalConImpuestosReal === 0;
+  const totalConImpuestos = esReferenciaMensual ? (cuotaPeriodicaRef + (c.ccACobrar || 0)) * factorImpuesto : totalConImpuestosReal;
+  const baseMensual = factorImpuesto ? totalConImpuestos / factorImpuesto : totalConImpuestos;
+  const estimadoSubMensual = esReferenciaMensual ? "Referencia — todavía sin campaña activa" : "";
 
   const formaPago = Array.isArray(c.formaPagoPlan) ? c.formaPagoPlan[0] : c.formaPagoPlan;
   const esSepa = (formaPago || "").toUpperCase() === "SEPA";
@@ -1941,8 +1961,8 @@ function renderCalendarioCobroHTML(c){
   const rows = [
     { t: "Pago 1 · activación", date: pago1Date, sub: "Fijo, sin importar cuota", base: pago1Base, total: pago1Total, zero: esCortesia && pago1Base === 0 },
     { t: "Pago 2 · resto cuota mes 1", date: pendienteLanz, sub: esCortesia ? "Gratis — cortesía del tipo de entrada" : estimadoSub, base: pago2Base, total: pago2Total, zero: esCortesia },
-    { t: "Mes 2 · permanencia", date: pendienteLanz, sub: estimadoSub, base: baseMensual, total: totalConImpuestos },
-    { t: "Mes 3 · permanencia — fin", date: pendienteLanz, sub: estimadoSub, base: baseMensual, total: totalConImpuestos }
+    { t: "Mes 2 · permanencia", date: pendienteLanz, sub: estimadoSubMensual, base: baseMensual, total: totalConImpuestos },
+    { t: "Mes 3 · permanencia — fin", date: pendienteLanz, sub: estimadoSubMensual, base: baseMensual, total: totalConImpuestos }
   ];
 
   const rowsHtml = rows.map(r => `
@@ -1959,7 +1979,7 @@ function renderCalendarioCobroHTML(c){
 
   const recurRows = ["Mes 4 · ciclo natural", "Mes 5 · ciclo natural"].map(t => `
     <div class="cal-row">
-      <div class="cal-l"><span class="c-title">${t}</span><span class="c-date">${cicloLabel}${estimadoSub ? " · " + estimadoSub : ""}</span></div>
+      <div class="cal-l"><span class="c-title">${t}</span><span class="c-date">${cicloLabel}${estimadoSubMensual ? " · " + estimadoSubMensual : ""}</span></div>
       <div class="cal-r"><span class="c-amt">${fmtMoneda(baseMensual, c.moneda)}</span><div class="c-tax">con ${taxLabel}: ${fmtMoneda(totalConImpuestos, c.moneda)}</div></div>
     </div>`).join("");
 
@@ -2204,12 +2224,10 @@ async function renderObDetailReal(){
       const valor = e.target.checked;
       e.target.disabled = true;
       try {
-        await fetch(`${N8N_BASE}/onboarding-material`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: c.id, campo, valor }),
-        });
-      } catch(err){ /* se refleja igualmente al recargar */ }
+        await postN8n("onboarding-material", { record_id: c.id, campo, valor });
+      } catch(err){
+        alert("No se pudo guardar el cambio en Airtable (" + (err.message || "error de red") + "). Vuelve a intentarlo.");
+      }
       await cargarClientesOnboarding();
     });
   });
@@ -2221,12 +2239,10 @@ async function renderObDetailReal(){
       if (!texto) return;
       noteBtn.disabled = true;
       try {
-        await fetch(`${N8N_BASE}/onboarding-nota`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: c.id, texto }),
-        });
-      } catch(err){ /* no bloquea */ }
+        await postN8n("onboarding-nota", { record_id: c.id, texto });
+      } catch(err){
+        alert("No se pudo guardar la nota en Airtable (" + (err.message || "error de red") + "). Vuelve a intentarlo.");
+      }
       await renderObDetailReal();
     });
   }
@@ -2236,12 +2252,10 @@ async function renderObDetailReal(){
       sendBtn.disabled = true;
       sendBtn.textContent = "Guardando…";
       try {
-        await fetch(`${N8N_BASE}/onboarding-marcar-carpeta`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: c.id }),
-        });
-      } catch(err){ /* se refleja igualmente al recargar */ }
+        await postN8n("onboarding-marcar-carpeta", { record_id: c.id });
+      } catch(err){
+        alert("No se pudo marcar la carpeta como enviada (" + (err.message || "error de red") + "). Vuelve a intentarlo.");
+      }
       await cargarClientesOnboarding();
     });
   }
@@ -2251,12 +2265,13 @@ async function renderObDetailReal(){
       advBtn.disabled = true;
       advBtn.textContent = "Guardando…";
       try {
-        await fetch(`${N8N_BASE}/onboarding-material-completo`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: c.id }),
-        });
-      } catch(err){ /* no bloquea */ }
+        await postN8n("onboarding-material-completo", { record_id: c.id });
+      } catch(err){
+        alert("No se pudo marcar Material Completo (" + (err.message || "error de red") + "). Vuelve a intentarlo.");
+        advBtn.disabled = false;
+        advBtn.textContent = "Marcar Material Completo";
+        return;
+      }
       advBtn.textContent = "✓ Material completo";
       await cargarClientesOnboarding();
       await cargarClientesMontaje();
@@ -2427,12 +2442,10 @@ Carpeta de material: (pendiente — la integración de Drive no está construida
       if (!texto) return;
       noteBtn.disabled = true;
       try {
-        await fetch(`${N8N_BASE}/onboarding-nota`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: c.id, texto }),
-        });
-      } catch(err){ /* no bloquea */ }
+        await postN8n("onboarding-nota", { record_id: c.id, texto });
+      } catch(err){
+        alert("No se pudo guardar la nota en Airtable (" + (err.message || "error de red") + "). Vuelve a intentarlo.");
+      }
       await renderMtDetailReal();
     });
   }
@@ -2442,12 +2455,13 @@ Carpeta de material: (pendiente — la integración de Drive no está construida
       campanaBtn.disabled = true;
       campanaBtn.textContent = "Guardando…";
       try {
-        await fetch(`${N8N_BASE}/onboarding-campana-lista`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: c.id }),
-        });
-      } catch(err){ /* se refleja igualmente al recargar */ }
+        await postN8n("onboarding-campana-lista", { record_id: c.id });
+      } catch(err){
+        alert("No se pudo marcar la campaña como lista (" + (err.message || "error de red") + "). Vuelve a intentarlo.");
+        campanaBtn.disabled = false;
+        campanaBtn.textContent = "Campaña lista →";
+        return;
+      }
       await cargarClientesMontaje();
       await cargarClientesReales();
       document.getElementById("tabbtn-cobro").click();
