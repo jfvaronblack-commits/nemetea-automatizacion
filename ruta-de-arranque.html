@@ -1529,6 +1529,9 @@ let clientesReales = [];
 let cbSelected = null;
 let cbLoading = true;
 let cbError = null;
+// Clientes cuyo Pago 2 "Cobrado" ya vio Micaela (clic en la tarjeta) — mientras
+// un cliente Cobrado no esté aquí, cuenta como aviso sin ver (burbuja verde).
+const cbSeenCobrado = new Set();
 
 async function cargarClientesReales(){
   cbLoading = true;
@@ -1553,10 +1556,17 @@ function pago2ChipClass(estado){
   return estado === "Cobrado" ? "ok" : estado === "Enviado" ? "warm" : "pending";
 }
 
+function esCobradoSinVer(c){
+  return c.pago2Estado === "Cobrado" && !cbSeenCobrado.has(c.id);
+}
+
 function renderCbList(){
   const list = document.getElementById("cb-list");
   list.innerHTML = "";
-  document.getElementById("cobro-badge").hidden = true;
+  const tabBadge = document.getElementById("cobro-badge");
+  const sinVerCount = clientesReales.filter(esCobradoSinVer).length;
+  tabBadge.hidden = sinVerCount === 0;
+  tabBadge.textContent = sinVerCount > 0 ? sinVerCount : "";
   if (cbLoading){
     list.innerHTML = `<p class="empty-step"><span>Cargando clientes reales desde Airtable…</span></p>`;
     return;
@@ -1570,15 +1580,18 @@ function renderCbList(){
     card.className = "card";
     card.setAttribute("aria-current", c.id === cbSelected);
     const estado = c.pago2Estado || "Pendiente";
+    const sinVer = esCobradoSinVer(c);
     card.innerHTML = `
       <div class="card-top">
         <span class="card-name">${c.empresa}</span>
+        ${sinVer ? `<span class="notif-badge" title="Pago 2 confirmado, sin ver">1</span>` : ""}
         <span class="chip ${pago2ChipClass(c.pago2Estado)}">Pago 2 · ${estado}</span>
       </div>
       <div class="card-meta"><span>${c.contacto} · ${c.entidad}</span></div>
     `;
     card.addEventListener("click", ()=>{
       cbSelected = c.id;
+      cbSeenCobrado.add(c.id);
       renderCbList();
       renderCbDetail();
     });

@@ -612,6 +612,22 @@ Mínimo dos semanas de Ruta de Arranque + Pago 2 nuevo corriendo sin
 incidencias junto al sistema legacy, antes de plantear retirar los
 workflows 1–9 (regla de gobierno de Juan, §10.2).
 
+## 9bis. Burbuja de aviso de Pago 2 — reconectada (21/10)
+
+Repaso final antes de entregar el mockup: la burbuja verde de "Pago 2
+confirmado sin ver" (§0quater.4) existía en CSS y en la pestaña, pero se
+perdió al conectar "Cobro y activación" a datos reales de Airtable/Stripe
+(§9 Paso 4) — la función vieja que la pintaba (`renderCobroPago2Block`,
+sobre los datos de ejemplo) quedó huérfana, y `renderCbList`/`renderCbDetail`
+(la que sí se usa) forzaba la burbuja de la pestaña siempre oculta y no
+tenía ninguna por ficha. Reconectado: ahora `renderCbList` marca como "sin
+ver" a cualquier cliente con `pago2Estado === "Cobrado"` que no se haya
+abierto todavía (clic en su tarjeta), muestra una burbuja por ficha y un
+contador agregado en la pestaña, y los limpia en cuanto Micaela abre esa
+ficha — igual que especifica §0quater.4. `renderCobroPago2Block` (línea
+~1311) sigue sin usarse en ningún sitio; es código muerto del mock anterior
+a la conexión real, se puede borrar cuando se retome este archivo.
+
 ## 10. Lo relevante del documento maestro de Notion (Juan)
 
 Juan lleva un documento maestro en Notion ("NEMETEA CRM — Migración
