@@ -438,8 +438,10 @@ async function fetchDetalleCliente(id){
 async function fetchHistoricoPagos(id){
   try {
     const res = await fetch(`${API_BASE}/panel-clientes-historico-pagos?record_id=${encodeURIComponent(id)}`);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || data.ok === false){
+      throw new Error((data && data.error) || ('HTTP ' + res.status));
+    }
     const c = CLIENTES.find(x => x.id === id);
     if (c) { c.pagos = data.pagos || []; c.pagosCargado = true; c.pagosError = null; }
   } catch (err) {
