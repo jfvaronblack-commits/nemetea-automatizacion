@@ -306,6 +306,7 @@
         <div class="search-box"><input type="text" id="searchBox" placeholder="Buscar por nombre o email..."></div>
         <div class="filter-row">
           <span class="chip active" data-filter="todos">Todos</span>
+          <span class="chip" data-filter="incidencias">Incidencias de pago</span>
           <span class="chip" data-filter="alerta">Con alerta</span>
           <span class="chip" data-filter="ok">Al día</span>
         </div>
@@ -471,7 +472,7 @@ function renderList(){
 
   const term = searchTerm.toLowerCase();
   const visibles = CLIENTES
-    .filter(c => activeFilter==='todos' || (activeFilter==='alerta' && numAlertas(c)>0) || (activeFilter==='ok' && numAlertas(c)===0))
+    .filter(c => activeFilter==='todos' || (activeFilter==='incidencias' && c.incidenciaPago) || (activeFilter==='alerta' && numAlertas(c)>0) || (activeFilter==='ok' && numAlertas(c)===0 && !c.incidenciaPago))
     .filter(c => !term || c.nombre.toLowerCase().includes(term) || c.email.toLowerCase().includes(term));
 
   if (!visibles.length){
@@ -482,14 +483,14 @@ function renderList(){
   visibles.forEach(c => {
       const row = document.createElement('div');
       row.className = 'client-row' + (c.id===selectedId ? ' selected' : '');
-      const est = estadoCliente(c);
+      const est = c.incidenciaPago ? 'crit' : estadoCliente(c);
       row.innerHTML = `
         <span class="dot ${est}"></span>
         <div class="info">
           <div class="name">${c.nombre}</div>
-          <div class="meta">${fmtMoney(c.totalACobrar, c.moneda)}/mes · ${c.entidad}</div>
+          <div class="meta">${c.incidenciaPago ? (c.incidenciaMotivo || 'Incidencia de pago') : `${fmtMoney(c.totalACobrar, c.moneda)}/mes · ${c.entidad}`}</div>
         </div>
-        ${numAlertas(c)>0 ? `<span class="badge ${est}">${numAlertas(c)}</span>` : ''}
+        ${c.incidenciaPago ? `<span class="badge crit">!</span>` : (numAlertas(c)>0 ? `<span class="badge ${est}">${numAlertas(c)}</span>` : '')}
       `;
       row.addEventListener('click', () => { selectedId = c.id; editandoDatos = false; renderList(); renderDetail(); });
       cont.appendChild(row);
