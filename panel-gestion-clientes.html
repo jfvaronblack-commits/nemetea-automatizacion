@@ -759,11 +759,14 @@ function renderDetail(){
 
       <div class="tab-panel" data-panel="modificar">
         <div class="mod-body">
-          <div class="mod-note">Simula el efecto en <b>Total a Cobrar</b> antes de guardar — el cálculo real lo hace el motor de Airtable (Regla cuota × Multiplicador cobro), esto es solo una vista previa. Contact Center, campañas adicionales y referidos activos todavía no tienen webhook de guardado (hay que cambiarlos directamente en Airtable). Los <b>ajustes manuales</b> sí se guardan desde aquí: se crean como cargos (invoice items) en Stripe.</div>
+          <div class="mod-note">Simula el efecto en <b>Total a Cobrar</b> antes de guardar — el cálculo real lo hace el motor de Airtable (Regla cuota × Multiplicador cobro), esto es solo una vista previa. <b>Contact Center</b> ya se guarda desde aquí: actualiza la suscripción de Stripe para los próximos meses y cobra ya la diferencia de este mes. Campañas adicionales y referidos activos todavía no tienen webhook de guardado. Los <b>ajustes manuales</b> se guardan aparte: se crean como cargos (invoice items) en Stripe.</div>
 
           <div class="mod-row">
             <div><div class="t">Contact Center</div><div class="d">${c.entidad.startsWith('LLC') && c.moneda==='USD' ? '0 € — LLC Extranjero no factura CC por huso horario' : (c.moneda==='USD' ? '175 USD/mes' : '150 €/mes')}, se cobra por campaña marcada, no por cliente</div></div>
-            <label class="switch"><input type="checkbox" id="mod-cc" ${c.cc?'checked':''}><span class="track"></span></label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label class="switch"><input type="checkbox" id="mod-cc" ${c.cc?'checked':''}><span class="track"></span></label>
+              <button type="button" class="ghost sm" id="mod-cc-guardar-btn">Guardar y cobrar</button>
+            </div>
           </div>
 
           <div class="mod-row">
@@ -1030,6 +1033,39 @@ function renderDetail(){
 
   const cancelarAjustesBtn = $('mod-cancelar-btn');
   cancelarAjustesBtn.addEventListener('click', () => { renderDetail(); });
+
+  // Guardar Contact Center — marca/desmarca el checkbox en Airtable, actualiza
+  // la suscripción de Stripe al nuevo importe y cobra ya la diferencia de este
+  // mes. Webhook "panel-clientes-modificar-cc".
+  const modCcGuardarBtn = $('mod-cc-guardar-btn');
+  if (modCcGuardarBtn) modCcGuardarBtn.addEventListener('click', async () => {
+    const nuevoCc = $('mod-cc').checked;
+    if (nuevoCc === c.cc){ alert('El Contact Center ya está así — no hay ningún cambio que guardar.'); return; }
+    const ok = confirm(`¿${nuevoCc ? 'Activar' : 'Desactivar'} Contact Center para ${c.nombre}?\n\nEsto actualiza la suscripción real de Stripe para los próximos meses${nuevoCc ? ' y cobra ya la diferencia de este mes' : ''}. ¿Continuar?`);
+    if (!ok) return;
+
+    modCcGuardarBtn.disabled = true;
+    const textoOriginal = modCcGuardarBtn.textContent;
+    modCcGuardarBtn.textContent = 'Guardando…';
+    try {
+      const res = await fetch(`${API_BASE}/panel-clientes-modificar-cc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: c.id, cc: nuevoCc }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+      alert(data.mensaje || 'Contact Center actualizado.');
+      c.detalleCargado = false;
+      listaCargada = false;
+      fetchListaClientes();
+      fetchDetalleCliente(c.id);
+    } catch (err) {
+      modCcGuardarBtn.disabled = false;
+      modCcGuardarBtn.textContent = textoOriginal;
+      alert('No se pudo guardar el cambio de Contact Center: ' + err.message);
+    }
+  });
 
   const guardarAjustesBtn = $('mod-guardar-ajustes-btn');
   guardarAjustesBtn.addEventListener('click', async () => {
