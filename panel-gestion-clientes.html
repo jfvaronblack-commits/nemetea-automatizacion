@@ -724,7 +724,7 @@ function renderDetail(){
                 <td>${p.tipo}</td>
                 <td><span class="pill ${p.estado==='Pagado'?'good':(p.estado==='Previsto'?'mute':'crit')}">${p.estado}</span>${p.detalleError ? ` <span style="color:var(--ink-dim); font-size:0.72rem;">— ${p.detalleError}</span>` : ''}</td>
                 <td class="amount">${fmtMoney(p.importe, c.moneda)}</td>
-                <td class="rowactions"></td>
+                <td class="rowactions">${p.estado==='Pagado' ? `<button type="button" class="ghost sm" data-action="descargar-factura" data-invoice-id="${p.invoiceId || ''}" data-payment-intent-id="${p.paymentIntentId || ''}">↓ Factura</button>` : ''}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -846,6 +846,44 @@ function renderDetail(){
       cont.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
       t.classList.add('active');
       cont.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  // Descargar factura — busca la factura real de Holded asociada a ese cargo
+  // de Stripe y descarga el PDF. Webhook "panel-clientes-descargar-factura".
+  cont.querySelectorAll('[data-action="descargar-factura"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const invoiceId = btn.dataset.invoiceId;
+      const paymentIntentId = btn.dataset.paymentIntentId;
+      btn.disabled = true;
+      const textoOriginal = btn.textContent;
+      btn.textContent = 'Descargando…';
+      try {
+        const res = await fetch(`${API_BASE}/panel-clientes-descargar-factura`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoice_id: invoiceId || null, payment_intent_id: paymentIntentId || null }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+        const byteChars = atob(data.pdfBase64);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Factura-${c.nombre.replace(/[^a-z0-9]+/gi, '-')}-${invoiceId || paymentIntentId || 'cobro'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('No se pudo descargar la factura: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+      }
     });
   });
 
