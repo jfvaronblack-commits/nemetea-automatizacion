@@ -347,6 +347,19 @@ let activeFilter = 'todos';
 let searchTerm = '';
 let detalleCargando = false;
 
+// Avisos de cobro fallido ocultados a mano (X) — persisten en este navegador,
+// independientemente de si el cobro se resolvió de verdad o no.
+const AVISOS_COBRO_STORAGE_KEY = 'panelClientesAvisosCobroOcultos';
+let avisosCobroOcultos;
+try {
+  avisosCobroOcultos = new Set(JSON.parse(localStorage.getItem(AVISOS_COBRO_STORAGE_KEY) || '[]'));
+} catch (e) {
+  avisosCobroOcultos = new Set();
+}
+function guardarAvisosCobroOcultos(){
+  try { localStorage.setItem(AVISOS_COBRO_STORAGE_KEY, JSON.stringify([...avisosCobroOcultos])); } catch (e) {}
+}
+
 // ---------------------------------------------------------------
 // Login — mismo patrón cosmético que ruta-de-arranque.html.
 // Pendiente de sustituir por validación real + token de webhooks
@@ -588,15 +601,16 @@ function renderDetail(){
       </div>`;
   });
 
-  if (impago){
+  if (impago && !avisosCobroOcultos.has(impago.id)){
     html += `
       <div class="alert-banner">
         <div class="alert-top">
           <span class="ic">🔴</span>
           <div class="txt"><b>Cobro fallido — cuota nº ${impago.nCuota}</b><span>${impago.detalleError || 'Revisar en Airtable, tabla Pagos.'} · ${fmtMoney(impago.importe, c.moneda)} previstos el ${impago.fecha}.</span></div>
           <div class="actions">
-            <button type="button" class="ghost sm">Ver en Airtable</button>
-            <button type="button" class="primary sm">Reenviar enlace de pago</button>
+            <button type="button" class="ghost sm" data-action="reintentar-cobro" data-invoice-id="${impago.invoiceId || ''}">↻ Reintentar cobro</button>
+            <button type="button" class="primary sm" data-action="mostrar-enlace" data-invoice-id="${impago.invoiceId || ''}">Mostrar enlace de pago</button>
+            <button type="button" class="ghost sm" data-action="ocultar-aviso" data-pago-id="${impago.id}" title="Ocultar este aviso" style="padding:5px 9px;">✕</button>
           </div>
         </div>
       </div>`;
@@ -818,6 +832,71 @@ function renderDetail(){
       t.classList.add('active');
       cont.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
     });
+  });
+
+  // Aviso de cobro fallido — reintentar el cobro o mostrar el enlace de pago
+  // de la factura real de Stripe, y ocultar el aviso a mano (X). Webhooks
+  // "panel-clientes-reintentar-cobro" / "panel-clientes-obtener-enlace-cobro".
+  const ocultarAvisoBtn = cont.querySelector('[data-action="ocultar-aviso"]');
+  if (ocultarAvisoBtn) ocultarAvisoBtn.addEventListener('click', () => {
+    avisosCobroOcultos.add(ocultarAvisoBtn.dataset.pagoId);
+    guardarAvisosCobroOcultos();
+    renderDetail();
+  });
+
+  const reintentarCobroBtn = cont.querySelector('[data-action="reintentar-cobro"]');
+  if (reintentarCobroBtn) reintentarCobroBtn.addEventListener('click', async () => {
+    const invoiceId = reintentarCobroBtn.dataset.invoiceId;
+    if (!invoiceId){ alert('Este cargo no tiene una factura de Stripe asociada — no se puede reintentar desde aquí.'); return; }
+    reintentarCobroBtn.disabled = true;
+    const textoOriginal = reintentarCobroBtn.textContent;
+    reintentarCobroBtn.textContent = 'Reintentando…';
+    try {
+      const res = await fetch(`${API_BASE}/panel-clientes-reintentar-cobro`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: c.id, invoice_id: invoiceId }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+      alert(data.mensaje || 'Cobro reintentado.');
+      if (data.pagado){ fetchHistoricoPagos(c.id); }
+    } catch (err) {
+      alert('No se pudo reintentar el cobro: ' + err.message);
+    } finally {
+      reintentarCobroBtn.disabled = false;
+      reintentarCobroBtn.textContent = textoOriginal;
+    }
+  });
+
+  const mostrarEnlaceBtn = cont.querySelector('[data-action="mostrar-enlace"]');
+  if (mostrarEnlaceBtn) mostrarEnlaceBtn.addEventListener('click', async () => {
+    const invoiceId = mostrarEnlaceBtn.dataset.invoiceId;
+    if (!invoiceId){ alert('Este cargo no tiene una factura de Stripe asociada — no se puede generar el enlace desde aquí.'); return; }
+    mostrarEnlaceBtn.disabled = true;
+    const textoOriginal = mostrarEnlaceBtn.textContent;
+    mostrarEnlaceBtn.textContent = 'Obteniendo enlace…';
+    try {
+      const res = await fetch(`${API_BASE}/panel-clientes-obtener-enlace-cobro`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record_id: c.id, invoice_id: invoiceId }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || ('HTTP ' + res.status));
+      if (!data.url){ alert('Stripe no devolvió un enlace de pago para esta factura.'); return; }
+      try {
+        await navigator.clipboard.writeText(data.url);
+        alert('Enlace copiado al portapapeles:\n' + data.url);
+      } catch (e) {
+        prompt('Copia este enlace de pago:', data.url);
+      }
+    } catch (err) {
+      alert('No se pudo obtener el enlace de pago: ' + err.message);
+    } finally {
+      mostrarEnlaceBtn.disabled = false;
+      mostrarEnlaceBtn.textContent = textoOriginal;
+    }
   });
 
   // Dar de baja una campaña — cancela la suscripción de Stripe del cliente
